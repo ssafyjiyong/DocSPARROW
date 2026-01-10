@@ -1,0 +1,80 @@
+<!-- Delete Confirmation Modal -->
+<div x-data="{ 
+    show: false, 
+    artifactId: null,
+    artifactName: ''
+}" 
+x-on:delete-confirm-open.window="show = true; artifactId = $event.detail.artifactId; artifactName = $event.detail.artifactName"
+x-on:delete-confirm-close.window="show = false; artifactId = null"
+x-show="show"
+x-cloak
+class="fixed inset-0 z-50 overflow-y-auto"
+x-transition:enter="transition ease-out duration-300"
+x-transition:enter-start="opacity-0"
+x-transition:enter-end="opacity-100"
+x-transition:leave="transition ease-in duration-200"
+x-transition:leave-start="opacity-100"
+x-transition:leave-end="opacity-0">
+
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="show = false"></div>
+    
+    <!-- Modal Content -->
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-red-500 to-rose-600 px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">산출물 삭제</h3>
+                        <p class="text-red-100 text-sm">이 작업은 취소할 수 없습니다</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6">
+                <p class="text-slate-700 text-base mb-3">다음 산출물을 정말 삭제하시겠습니까?</p>
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-pdf text-red-500"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium text-slate-800" x-text="artifactName"></p>
+                            <p class="text-xs text-slate-500 mt-0.5">이 파일이 영구적으로 삭제됩니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-4 flex gap-3 border-t border-slate-200">
+                <button @click="show = false" 
+                    class="flex-1 px-5 py-3 bg-white hover:bg-slate-100 text-slate-700 rounded-xl font-medium transition-all border border-slate-300 flex items-center justify-center gap-2">
+                    <i class="fas fa-times"></i>
+                    취소
+                </button>
+                <button @click="confirmDelete(artifactId)" 
+                    class="flex-1 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-trash"></i>
+                    삭제
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>

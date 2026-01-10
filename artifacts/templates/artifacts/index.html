@@ -1,0 +1,286 @@
+{% extends "artifacts/base.html" %}
+{% load artifact_filters %}
+{% load static %}
+
+{% block content %}
+<!-- Country Selector -->
+<div class="mb-6">
+    <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-4 border border-slate-200/50">
+        <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fas fa-globe text-white"></i>
+                </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                {% for country in countries %}
+                <a href="?country={{ country.code }}" title="{{ country.name }}" 
+                   class="w-14 h-14 rounded-xl transition-all duration-200 flex items-center justify-center overflow-hidden {% if country == selected_country %}bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg scale-110 ring-4 ring-blue-200 p-1{% else %}bg-slate-100 hover:bg-slate-200 hover:scale-105 p-1.5{% endif %}">
+                    {% if country.flag_icon %}
+                        <img src="{% static 'artifacts/imgs/' %}{{ country.flag_icon }}" alt="{{ country.name }}" class="w-full h-full object-contain">
+                    {% else %}
+                        <span class="text-3xl">{{ country.flag_emoji }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Matrix Grid -->
+<div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-slate-200/50">
+    <!-- Top Scrollbar Wrapper -->
+    <div id="topScrollbar" class="overflow-x-auto overflow-y-hidden border-b border-slate-200/50" style="height: 20px;">
+        <div id="topScrollbarContent"></div>
+    </div>
+    <!-- Main Table Container -->
+    <div id="mainTableContainer" class="overflow-x-auto">
+        <table class="min-w-full border-collapse">
+            <thead>
+                <tr>
+                    <!-- Corner Cell -->
+                    <th class="sticky-corner bg-gradient-to-br from-slate-700 to-slate-800 p-4 text-left">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-folder-open text-slate-300"></i>
+                            <span class="font-semibold text-white">문서 카테고리</span>
+                        </div>
+                    </th>
+                    <!-- Product Headers -->
+                    {% for product in products %}
+                    <th class="sticky-header grid-cell {{ product.color_class }} p-4 border-l border-white/20">
+                        <div class="text-center">
+                            <div class="font-bold text-lg text-white drop-shadow-sm">{{ product.name }}</div>
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix_data %}
+                <tr class="group hover:bg-blue-50/50 transition-colors">
+                    <!-- Category Cell -->
+                    <td class="sticky-col category-cell bg-gradient-to-r from-slate-50 to-slate-100 p-4 border-t border-slate-200 group-hover:from-blue-50 group-hover:to-blue-100 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-file-lines text-slate-400 text-sm"></i>
+                            <span class="font-medium text-slate-700">{{ row.category.name }}</span>
+                        </div>
+                    </td>
+                    <!-- Artifact Cells -->
+                    {% for cell in row.cells %}
+                    <td class="grid-cell border-t border-l border-slate-200 p-2 align-top bg-white group-hover:bg-blue-50/30 transition-colors">
+                        {% if cell.artifact %}
+                        <!-- Filled State: Artifact Card -->
+                        <div onclick="openHistoryModal({{ cell.product.id }}, {{ row.category.id }})" class="card-hover bg-gradient-to-br from-white to-slate-50 rounded-xl shadow-md p-3 cursor-pointer h-full flex flex-col border border-slate-200/50 hover:border-blue-300">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-8 h-8 {{ cell.product.color_class }} rounded-lg flex items-center justify-center shadow-sm">
+                                    <i class="fas fa-file-check text-white text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-800">v{{ cell.artifact.version_string }}</div>
+                                    <div class="text-xs text-slate-400">{{ cell.product.name }}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-auto">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ cell.product.color_class|get_badge_color }}">
+                                    <i class="fas fa-check mr-1"></i> 등록됨
+                                </span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Empty State -->
+                        <div onclick="openHistoryModal({{ cell.product.id }}, {{ row.category.id }})" class="empty-cell-hover bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-3 h-full flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-slate-200 hover:border-blue-300 transition-all">
+                            <div class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center mb-2">
+                                <i class="fa-regular fa-face-meh text-slate-400 text-xl"></i>
+                            </div>
+                            <span class="text-xs text-slate-400 font-medium">미등록</span>
+                            <span class="text-xs text-blue-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-plus-circle"></i> 등록하기
+                            </span>
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- History Modal Component -->
+{% include "artifacts/components/history_modal.html" %}
+
+<!-- Delete Confirmation Modal Component -->
+{% include "artifacts/components/delete_modal.html" %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Scroll synchronization setup
+document.addEventListener('DOMContentLoaded', function() {
+    const topScrollbar = document.getElementById('topScrollbar');
+    const mainTableContainer = document.getElementById('mainTableContainer');
+    const topScrollbarContent = document.getElementById('topScrollbarContent');
+    const table = mainTableContainer.querySelector('table');
+    
+    // Set the dummy scrollbar content width to match the table width
+    function updateScrollbarWidth() {
+        if (table) {
+            topScrollbarContent.style.width = table.offsetWidth + 'px';
+        }
+    }
+    
+    // Initial setup
+    updateScrollbarWidth();
+    
+    // Update on window resize
+    window.addEventListener('resize', updateScrollbarWidth);
+    
+    // Sync scroll from top scrollbar to main container
+    let isTopScrolling = false;
+    topScrollbar.addEventListener('scroll', function() {
+        if (!isTopScrolling) {
+            isTopScrolling = true;
+            mainTableContainer.scrollLeft = topScrollbar.scrollLeft;
+            setTimeout(() => isTopScrolling = false, 10);
+        }
+    });
+    
+    // Sync scroll from main container to top scrollbar
+    let isMainScrolling = false;
+    mainTableContainer.addEventListener('scroll', function() {
+        if (!isMainScrolling) {
+            isMainScrolling = true;
+            topScrollbar.scrollLeft = mainTableContainer.scrollLeft;
+            setTimeout(() => isMainScrolling = false, 10);
+        }
+    });
+});
+
+let modalData = {show: false, productId: null, categoryId: null, productName: '', categoryName: '', history: [], loading: false};
+
+async function openHistoryModal(productId, categoryId) {
+    modalData.productId = productId;
+    modalData.categoryId = categoryId;
+    modalData.show = true;
+    modalData.loading = true;
+    
+    // 현재 선택된 국가 정보 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    const country = urlParams.get('country') || '';
+    
+    try {
+        const response = await fetch(`/history/${productId}/${categoryId}/?country=${country}`);
+        const data = await response.json();
+        modalData.productName = data.product;
+        modalData.categoryName = data.category;
+        modalData.history = data.history;
+    } catch (error) {
+        console.error('Failed to load history:', error);
+        alert('히스토리를 불러오는데 실패했습니다.');
+    } finally {
+        modalData.loading = false;
+    }
+    window.dispatchEvent(new CustomEvent('modal-open', {detail: modalData}));
+}
+
+function closeModal() {
+    modalData.show = false;
+    window.dispatchEvent(new CustomEvent('modal-close'));
+}
+
+async function uploadFile(productId, categoryId, formData) {
+    // 현재 선택된 국가 정보 추가
+    const urlParams = new URLSearchParams(window.location.search);
+    const country = urlParams.get('country') || '';
+    formData.append('country', country);
+    
+    try {
+        const response = await fetch(`/upload/${productId}/${categoryId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        });
+        const result = await response.json();
+        if (result.success) {
+            showNotification('파일이 업로드되었습니다.', 'success');
+            // Hard reload to bypass cache
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 500);
+        } else {
+            showNotification(result.error || '업로드에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('Upload failed:', error);
+        showNotification('업로드에 실패했습니다.', 'error');
+    }
+}
+
+function deleteArtifact(artifactId, artifactName) {
+    // Open custom delete confirmation modal
+    window.dispatchEvent(new CustomEvent('delete-confirm-open', {
+        detail: { artifactId, artifactName }
+    }));
+}
+
+async function confirmDelete(artifactId) {
+    // Close the delete confirmation modal
+    window.dispatchEvent(new CustomEvent('delete-confirm-close'));
+    
+    try {
+        const response = await fetch(`/delete/${artifactId}/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        });
+        const result = await response.json();
+        if (result.success) {
+            // Show success message with custom notification
+            showNotification('삭제되었습니다.', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification('삭제에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('Delete failed:', error);
+        showNotification('삭제에 실패했습니다.', 'error');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    } text-white font-medium animate-fade-in`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        ${message}
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

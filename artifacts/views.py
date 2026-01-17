@@ -200,9 +200,64 @@ def artifact_download(request, artifact_id):
     return response
 
 
+def product_bulk_download(request, product_id):
+    """제품별 산출물 일괄 다운로드 (ZIP)"""
+    import zipfile
+    import io
+    from django.utils.text import slugify
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Get country parameter
+    country_code = request.GET.get('country')
+    if country_code:
+        country = Country.objects.filter(code=country_code).first()
+    else:
+        country = Country.objects.filter(code='KR').first()
+    
+    # Get all artifacts for this product and country
+    artifacts = Artifact.objects.filter(
+        product=product,
+        country=country
+    ).select_related('category').order_by('category__display_order')
+    
+    if not artifacts.exists():
+        return JsonResponse({'error': '다운로드할 자료가 없습니다.'}, status=404)
+    
+    # Create ZIP file in memory
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for artifact in artifacts:
+            if artifact.file:
+                try:
+                    # Create folder structure: category_name/filename
+                    folder_name = slugify(artifact.category.name)
+                    file_name = artifact.filename
+                    archive_name = f"{folder_name}/{file_name}"
+                    
+                    # Add file to ZIP
+                    with artifact.file.open('rb') as f:
+                        zip_file.writestr(archive_name, f.read())
+                except Exception as e:
+                    # Skip files that can't be read
+                    continue
+    
+    # Prepare response
+    zip_buffer.seek(0)
+    country_name = country.code if country else 'Global'
+    filename = f"{slugify(product.name)}_{country_name}_saleskit.zip"
+    
+    response = FileResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
 @login_required
 @require_http_methods(["POST"])
 def artifact_delete(request, artifact_id):
+
     """산출물 삭제 (Admin만)"""
     if not request.user.is_staff:
         return HttpResponseForbidden('권한이 없습니다.')

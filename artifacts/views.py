@@ -78,6 +78,22 @@ def dashboard(request):
     products = Product.objects.all()
     categories = Category.objects.all()
     
+    # Get version filters from GET params (format: version_1=1.0.0&version_2=1.1.0)
+    version_filters = {}
+    for product in products:
+        version_param = request.GET.get(f'version_{product.id}')
+        if version_param:
+            version_filters[product.id] = version_param
+    
+    # Get all unique versions per product for this country
+    product_versions = {}
+    for product in products:
+        versions = Artifact.objects.filter(
+            country=selected_country,
+            product=product
+        ).values_list('version_string', flat=True).distinct().order_by('-version_string')
+        product_versions[product.id] = list(versions)
+    
     # 매트릭스 데이터 구성
     matrix_data = []
     for category in categories:
@@ -87,12 +103,21 @@ def dashboard(request):
         }
         
         for product in products:
+            # Check if there's a version filter for this product
+            version_filter = version_filters.get(product.id)
+            
             # 해당 국가/제품/카테고리의 최신 산출물 가져오기
-            latest_artifact = Artifact.objects.filter(
+            query = Artifact.objects.filter(
                 country=selected_country,
                 product=product,
                 category=category
-            ).order_by('-created_at').first()  # 명시적으로 최신순 정렬
+            )
+            
+            # Apply version filter if specified
+            if version_filter:
+                query = query.filter(version_string=version_filter)
+            
+            latest_artifact = query.order_by('-created_at').first()
             
             row_data['cells'].append({
                 'product': product,
@@ -107,6 +132,8 @@ def dashboard(request):
         'products': products,
         'categories': categories,
         'matrix_data': matrix_data,
+        'product_versions': product_versions,
+        'version_filters': version_filters,
     }
     
     return render(request, 'artifacts/index.html', context)
@@ -135,6 +162,7 @@ def artifact_history(request, product_id, category_id):
         'id': artifact.id,
         'created_at': timezone.localtime(artifact.created_at).strftime('%Y-%m-%d %H:%M'),
         'uploader': artifact.uploader.get_full_name() or artifact.uploader.username if artifact.uploader else 'Unknown',
+        'uploader_id': artifact.uploader.id if artifact.uploader else None,
         'version': artifact.version_string,
         'filename': artifact.filename,
         'download_url': artifact.file.url if artifact.file else None,
@@ -144,7 +172,9 @@ def artifact_history(request, product_id, category_id):
         'product': product.name,
         'category': category.name,
         'country': country.name if country else None,
-        'history': history_data
+        'history': history_data,
+        'current_user_id': request.user.id if request.user.is_authenticated else None,
+        'is_staff': request.user.is_staff if request.user.is_authenticated else False,
     })
 
 
@@ -168,6 +198,19 @@ def artifact_upload(request, product_id, category_id):
     if not version_string or not file:
         return JsonResponse({'error': '버전과 파일을 모두 입력해주세요.'}, status=400)
     
+    # Check for duplicate version
+    existing = Artifact.objects.filter(
+        country=country,
+        product=product,
+        category=category,
+        version_string=version_string
+    ).first()
+    
+    if existing:
+        return JsonResponse({
+            'error': f'버전 {version_string}이(가) 이미 존재합니다. 다른 버전을 입력해주세요.'
+        }, status=400)
+    
     artifact = Artifact.objects.create(
         country=country,
         product=product,
@@ -190,13 +233,17 @@ def artifact_upload(request, product_id, category_id):
 
 def artifact_download(request, artifact_id):
     """산출물 다운로드"""
+    from urllib.parse import quote
+    
     artifact = get_object_or_404(Artifact, id=artifact_id)
     
     if not artifact.file:
         return JsonResponse({'error': '파일이 존재하지 않습니다.'}, status=404)
     
     response = FileResponse(artifact.file.open('rb'))
-    response['Content-Disposition'] = f'attachment; filename="{artifact.filename}"'
+    # Support Korean filenames using RFC 5987
+    encoded_filename = quote(artifact.filename)
+    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
     return response
 
 
@@ -257,12 +304,13 @@ def product_bulk_download(request, product_id):
 @login_required
 @require_http_methods(["POST"])
 def artifact_delete(request, artifact_id):
-
-    """산출물 삭제 (Admin만)"""
-    if not request.user.is_staff:
+    """산출물 삭제 (Admin 또는 업로더)"""
+    artifact = get_object_or_404(Artifact, id=artifact_id)
+    
+    # Allow admin or uploader to delete
+    if not (request.user.is_staff or artifact.uploader == request.user):
         return HttpResponseForbidden('권한이 없습니다.')
     
-    artifact = get_object_or_404(Artifact, id=artifact_id)
     artifact.delete()
     
     return JsonResponse({

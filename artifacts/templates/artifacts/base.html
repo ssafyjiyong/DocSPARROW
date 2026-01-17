@@ -10,7 +10,7 @@
     <link rel="icon" type="image/x-icon" href="{% static 'artifacts/favicon.ico' %}">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'artifacts/favicon-32x32.png' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'artifacts/favicon-16x16.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'artifacts/DocSPARROW.png' %}">\r
+    <link rel="apple-touch-icon" href="{% static 'artifacts/DocSPARROW.png' %}">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -141,6 +141,9 @@
                                 <i class="fas fa-key"></i> 비밀번호 변경
                             </a>
                             {% if user.is_staff %}
+                            <a href="{% url 'artifacts:admin_manage' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
+                                <i class="fas fa-tools"></i> 관리
+                            </a>
                             <a href="{% url 'admin:index' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
                                 <i class="fas fa-cog"></i> Admin
                             </a>

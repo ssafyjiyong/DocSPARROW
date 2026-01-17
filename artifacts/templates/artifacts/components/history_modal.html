@@ -6,9 +6,11 @@
     categoryName: '', 
     history: [],
     productId: null,
-    categoryId: null
+    categoryId: null,
+    currentUserId: null,
+    isStaff: false
 }" 
-x-on:modal-open.window="show = true; loading = $event.detail.loading; productName = $event.detail.productName; categoryName = $event.detail.categoryName; history = $event.detail.history; productId = $event.detail.productId; categoryId = $event.detail.categoryId"
+x-on:modal-open.window="show = true; loading = $event.detail.loading; productName = $event.detail.productName; categoryName = $event.detail.categoryName; history = $event.detail.history; productId = $event.detail.productId; categoryId = $event.detail.categoryId; currentUserId = $event.detail.currentUserId; isStaff = $event.detail.isStaff"
 x-on:modal-close.window="show = false"
 x-show="show"
 x-cloak
@@ -89,11 +91,13 @@ x-transition:leave-end="opacity-0">
                                     <a :href="'/download/' + item.id + '/'" class="w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm" title="다운로드">
                                         <i class="fas fa-download"></i>
                                     </a>
-                                    {% if user.is_staff %}
-                                    <button @click="deleteArtifact(item.id, item.filename)" class="w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm" title="삭제">
+                                    <!-- Show delete button if user is admin OR uploader -->
+                                    <button x-show="isStaff || (currentUserId && item.uploader_id === currentUserId)" 
+                                            @click="deleteArtifact(item.id, item.filename)" 
+                                            class="w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm" 
+                                            title="삭제">
                                         <i class="fas fa-trash"></i>
                                     </button>
-                                    {% endif %}
                                 </div>
                             </div>
                         </div>

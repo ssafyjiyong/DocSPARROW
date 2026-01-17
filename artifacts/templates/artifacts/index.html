@@ -57,7 +57,7 @@
                                     onchange="filterByVersion({{ product.id }})"
                                     class="w-full px-2 py-1 bg-white/20 text-white text-xs rounded-md border border-white/30 hover:bg-white/30 transition-all"
                                     style="color: white;">
-                                <option value="" style="background-color: white; color: black;">버전 선택</option>
+                                <option value="" style="background-color: white; color: black;">전체 버전</option>
                                 {% for version in product_versions|get_item:product.id %}
                                 <option value="{{ version }}" {% if version_filters|get_item:product.id == version %}selected{% endif %} style="background-color: white; color: black;">
                                     v{{ version }}
@@ -203,6 +203,8 @@ async function openHistoryModal(productId, categoryId) {
         modalData.productName = data.product;
         modalData.categoryName = data.category;
         modalData.history = data.history;
+        modalData.currentUserId = data.current_user_id;
+        modalData.isStaff = data.is_staff;
     } catch (error) {
         console.error('Failed to load history:', error);
         alert('히스토리를 불러오는데 실패했습니다.');
@@ -313,9 +315,21 @@ function filterByVersion(productId) {
 }
 
 function downloadProductBulk(productId, productName, countryCode) {
+    // Get selected version filter if any
+    const versionSelect = document.getElementById(`version_${productId}`);
+    const selectedVersion = versionSelect ? versionSelect.value : '';
+    
+    // Build URL with version parameter if selected
+    let url = `/download-product-bulk/${productId}/?country=${countryCode}`;
+    if (selectedVersion) {
+        url += `&version=${selectedVersion}`;
+    }
+    
     // Navigate to bulk download URL
-    window.location.href = `/download-product-bulk/${productId}/?country=${countryCode}`;
-    showNotification(`${productName} 제품의 모든 자료를 다운로드합니다...`, 'info');
+    window.location.href = url;
+    
+    const versionText = selectedVersion ? ` (v${selectedVersion})` : '';
+    showNotification(`${productName}${versionText} 제품의 모든 자료를 다운로드합니다...`, 'info');
 }
 
 function getCookie(name) {

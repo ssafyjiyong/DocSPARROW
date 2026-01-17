@@ -262,11 +262,21 @@ def product_bulk_download(request, product_id):
     else:
         country = Country.objects.filter(code='KR').first()
     
-    # Get all artifacts for this product and country
-    artifacts = Artifact.objects.filter(
+    # Get version filter if provided
+    version_filter = request.GET.get('version')
+    
+    # Build query
+    query = Artifact.objects.filter(
         product=product,
         country=country
-    ).select_related('category').order_by('category__display_order')
+    )
+    
+    # Apply version filter if specified
+    if version_filter:
+        query = query.filter(version_string=version_filter)
+    
+    # Get all artifacts for this product and country
+    artifacts = query.select_related('category').order_by('category__display_order')
     
     if not artifacts.exists():
         return JsonResponse({'error': '다운로드할 자료가 없습니다.'}, status=404)

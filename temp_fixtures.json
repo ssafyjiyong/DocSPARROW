@@ -1,0 +1,8 @@
+[
+{
+  "model": "artifacts.country",
+  "pk": 1,
+  "fields": {
+    "code": "KR",
+    "name": "ÇÑ±¹",
+    "flag_emoji": 

@@ -34,8 +34,8 @@ pip install -r requirements.txt
 # 데이터베이스 마이그레이션
 python manage.py migrate
 
-# 초기 데이터 생성
-python manage.py init_data
+# 기본 데이터 로드 (국가, 제품, 카테고리)
+python manage.py loaddata artifacts/fixtures/initial_data.json
 
 # 서버 실행
 python manage.py runserver

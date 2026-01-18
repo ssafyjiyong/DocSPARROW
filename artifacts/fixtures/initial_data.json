@@ -1,0 +1,272 @@
+[
+{
+  "model": "artifacts.country",
+  "pk": 1,
+  "fields": {
+    "code": "KR",
+    "name": "한국",
+    "flag_emoji": "🇰🇷",
+    "flag_icon": "free-icon-flag-KR.png",
+    "display_order": 1
+  }
+},
+{
+  "model": "artifacts.country",
+  "pk": 2,
+  "fields": {
+    "code": "US",
+    "name": "미국",
+    "flag_emoji": "🇺🇸",
+    "flag_icon": "free-icon-flag-US.png",
+    "display_order": 2
+  }
+},
+{
+  "model": "artifacts.country",
+  "pk": 3,
+  "fields": {
+    "code": "JP",
+    "name": "일본",
+    "flag_emoji": "🇯🇵",
+    "flag_icon": "free-icon-flag-JP.png",
+    "display_order": 3
+  }
+},
+{
+  "model": "artifacts.country",
+  "pk": 4,
+  "fields": {
+    "code": "ES",
+    "name": "스페인",
+    "flag_emoji": "🇪🇸",
+    "flag_icon": "free-icon-flag-ES.png",
+    "display_order": 4
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 1,
+  "fields": {
+    "name": "Enterprise",
+    "color_class": "bg-green-500",
+    "display_order": 1
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 2,
+  "fields": {
+    "name": "SAST",
+    "color_class": "bg-red-500",
+    "display_order": 2
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 3,
+  "fields": {
+    "name": "SAQT",
+    "color_class": "bg-indigo-600",
+    "display_order": 3
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 4,
+  "fields": {
+    "name": "DAST",
+    "color_class": "bg-orange-500",
+    "display_order": 4
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 5,
+  "fields": {
+    "name": "SCA",
+    "color_class": "bg-yellow-500",
+    "display_order": 5
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 6,
+  "fields": {
+    "name": "P-Cloud",
+    "color_class": "bg-blue-500",
+    "display_order": 6
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 7,
+  "fields": {
+    "name": "G-Cloud",
+    "color_class": "bg-green-600",
+    "display_order": 7
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 8,
+  "fields": {
+    "name": "SecureHub",
+    "color_class": "bg-blue-600",
+    "display_order": 8
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 9,
+  "fields": {
+    "name": "On-Demand",
+    "color_class": "bg-teal-500",
+    "display_order": 9
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 10,
+  "fields": {
+    "name": "MCP",
+    "color_class": "bg-purple-500",
+    "display_order": 10
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 1,
+  "fields": {
+    "name": "제품소개서",
+    "display_order": 1
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 2,
+  "fields": {
+    "name": "브로슈어",
+    "display_order": 2
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 3,
+  "fields": {
+    "name": "사례집(Use-CASE)",
+    "display_order": 3
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 4,
+  "fields": {
+    "name": "제품비교표",
+    "display_order": 4
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 5,
+  "fields": {
+    "name": "기능비교자료",
+    "display_order": 5
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 6,
+  "fields": {
+    "name": "BM비교자료",
+    "display_order": 6
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 7,
+  "fields": {
+    "name": "시장점유율",
+    "display_order": 7
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 8,
+  "fields": {
+    "name": "설치가이드",
+    "display_order": 8
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 9,
+  "fields": {
+    "name": "사용설명서",
+    "display_order": 9
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 10,
+  "fields": {
+    "name": "사용가이드",
+    "display_order": 10
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 11,
+  "fields": {
+    "name": "관리자가이드",
+    "display_order": 11
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 12,
+  "fields": {
+    "name": "규격서",
+    "display_order": 12
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 13,
+  "fields": {
+    "name": "릴리즈노트",
+    "display_order": 13
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 14,
+  "fields": {
+    "name": "사업계획서",
+    "display_order": 14
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 15,
+  "fields": {
+    "name": "컴플라이언스/가이드",
+    "display_order": 15
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 16,
+  "fields": {
+    "name": "인증서",
+    "display_order": 16
+  }
+},
+{
+  "model": "artifacts.category",
+  "pk": 17,
+  "fields": {
+    "name": "특허정보",
+    "display_order": 17
+  }
+}
+]

@@ -3,26 +3,44 @@
 {% load static %}
 
 {% block content %}
-<!-- Country Selector -->
+<!-- Country & Department Selector -->
 <div class="mb-6">
     <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-4 border border-slate-200/50">
-        <div class="flex items-center gap-4 flex-wrap">
-            <div class="flex items-center gap-2">
-                <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
-                    <i class="fas fa-globe text-white"></i>
+        <div class="flex items-center gap-4 flex-wrap justify-between">
+            <!-- 국가 선택 (왼쪽) -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
+                        <i class="fas fa-globe text-white"></i>
+                    </div>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    {% for country in countries %}
+                    <a href="?country={{ country.code }}{% if selected_department %}&department={{ selected_department }}{% endif %}" title="{{ country.name }}" 
+                       class="w-14 h-14 rounded-xl transition-all duration-200 flex items-center justify-center overflow-hidden {% if country == selected_country %}bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg scale-110 ring-4 ring-blue-200 p-1{% else %}bg-slate-100 hover:bg-slate-200 hover:scale-105 p-1.5{% endif %}">
+                        {% if country.flag_icon %}
+                            <img src="{% static 'artifacts/imgs/' %}{{ country.flag_icon }}" alt="{{ country.name }}" class="w-full h-full object-contain">
+                        {% else %}
+                            <span class="text-3xl">{{ country.flag_emoji }}</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
-            <div class="flex gap-2 flex-wrap">
-                {% for country in countries %}
-                <a href="?country={{ country.code }}" title="{{ country.name }}" 
-                   class="w-14 h-14 rounded-xl transition-all duration-200 flex items-center justify-center overflow-hidden {% if country == selected_country %}bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg scale-110 ring-4 ring-blue-200 p-1{% else %}bg-slate-100 hover:bg-slate-200 hover:scale-105 p-1.5{% endif %}">
-                    {% if country.flag_icon %}
-                        <img src="{% static 'artifacts/imgs/' %}{{ country.flag_icon }}" alt="{{ country.name }}" class="w-full h-full object-contain">
-                    {% else %}
-                        <span class="text-3xl">{{ country.flag_emoji }}</span>
-                    {% endif %}
-                </a>
-                {% endfor %}
+            
+            <!-- 부서 선택 (오른쪽) -->
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fas fa-building text-white"></i>
+                </div>
+                <select onchange="filterByDepartment(this.value)" 
+                        class="px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-purple-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all cursor-pointer">
+                    {% for dept_code, dept_name in departments %}
+                    <option value="{{ dept_code }}" {% if selected_department == dept_code %}selected{% endif %}>
+                        {{ dept_name }}
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
     </div>
@@ -308,6 +326,20 @@ function filterByVersion(productId) {
         url.searchParams.set(`version_${productId}`, selectedVersion);
     } else {
         url.searchParams.delete(`version_${productId}`);
+    }
+    
+    // Reload page with new filters
+    window.location.href = url.toString();
+}
+
+function filterByDepartment(department) {
+    const url = new URL(window.location.href);
+    
+    // Update or remove department parameter
+    if (department) {
+        url.searchParams.set('department', department);
+    } else {
+        url.searchParams.delete('department');
     }
     
     // Reload page with new filters

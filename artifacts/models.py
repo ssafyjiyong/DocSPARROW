@@ -62,7 +62,19 @@ class ProductVersion(models.Model):
 
 class Category(models.Model):
     """문서 카테고리 모델 (17개 카테고리)"""
+    DEPARTMENT_CHOICES = [
+        ('consulting', '컨설팅'),
+        ('business', '사업'),
+        ('marketing', '마케팅'),
+    ]
+    
     name = models.CharField(max_length=100, verbose_name="카테고리명")
+    department = models.CharField(
+        max_length=20, 
+        choices=DEPARTMENT_CHOICES, 
+        verbose_name="담당 부서",
+        default='consulting'
+    )
     display_order = models.IntegerField(default=0, verbose_name="정렬 순서")
 
     class Meta:

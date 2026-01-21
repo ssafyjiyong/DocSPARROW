@@ -75,8 +75,24 @@ def dashboard(request):
         # 기본값: 한국
         selected_country = Country.objects.filter(code='KR').first()
     
+    # 부서 필터 가져오기
+    selected_department = request.GET.get('department', '')
+    
+    # 부서 목록
+    departments = [
+        ('', '전체 부서'),
+        ('consulting', '컨설팅'),
+        ('business', '사업'),
+        ('marketing', '마케팅'),
+    ]
+    
     products = Product.objects.all()
-    categories = Category.objects.all()
+    
+    # 카테고리 필터링 (부서별)
+    if selected_department:
+        categories = Category.objects.filter(department=selected_department)
+    else:
+        categories = Category.objects.all()
     
     # Get version filters from GET params (format: version_1=1.0.0&version_2=1.1.0)
     version_filters = {}
@@ -134,6 +150,8 @@ def dashboard(request):
         'matrix_data': matrix_data,
         'product_versions': product_versions,
         'version_filters': version_filters,
+        'departments': departments,
+        'selected_department': selected_department,
     }
     
     return render(request, 'artifacts/index.html', context)

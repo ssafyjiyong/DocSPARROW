@@ -22,32 +22,10 @@
   }
 },
 {
-  "model": "artifacts.country",
-  "pk": 3,
-  "fields": {
-    "code": "JP",
-    "name": "일본",
-    "flag_emoji": "🇯🇵",
-    "flag_icon": "free-icon-flag-JP.png",
-    "display_order": 3
-  }
-},
-{
-  "model": "artifacts.country",
-  "pk": 4,
-  "fields": {
-    "code": "ES",
-    "name": "스페인",
-    "flag_emoji": "🇪🇸",
-    "flag_icon": "free-icon-flag-ES.png",
-    "display_order": 4
-  }
-},
-{
   "model": "artifacts.product",
   "pk": 1,
   "fields": {
-    "name": "Enterprise",
+    "name": "Ent-통합",
     "color_class": "bg-green-500",
     "display_order": 1
   }
@@ -56,7 +34,7 @@
   "model": "artifacts.product",
   "pk": 2,
   "fields": {
-    "name": "SAST",
+    "name": "Ent-SAST",
     "color_class": "bg-red-500",
     "display_order": 2
   }
@@ -65,7 +43,7 @@
   "model": "artifacts.product",
   "pk": 3,
   "fields": {
-    "name": "SAQT",
+    "name": "Ent-SAQT",
     "color_class": "bg-indigo-600",
     "display_order": 3
   }
@@ -74,8 +52,8 @@
   "model": "artifacts.product",
   "pk": 4,
   "fields": {
-    "name": "DAST",
-    "color_class": "bg-orange-500",
+    "name": "Ent-자동차",
+    "color_class": "bg-blue-500",
     "display_order": 4
   }
 },
@@ -83,8 +61,8 @@
   "model": "artifacts.product",
   "pk": 5,
   "fields": {
-    "name": "SCA",
-    "color_class": "bg-yellow-500",
+    "name": "Ent-국방",
+    "color_class": "bg-gray-700",
     "display_order": 5
   }
 },
@@ -92,8 +70,8 @@
   "model": "artifacts.product",
   "pk": 6,
   "fields": {
-    "name": "P-Cloud",
-    "color_class": "bg-blue-500",
+    "name": "Ent-DAST",
+    "color_class": "bg-orange-500",
     "display_order": 6
   }
 },
@@ -101,8 +79,8 @@
   "model": "artifacts.product",
   "pk": 7,
   "fields": {
-    "name": "G-Cloud",
-    "color_class": "bg-green-600",
+    "name": "Ent-SCA",
+    "color_class": "bg-yellow-500",
     "display_order": 7
   }
 },
@@ -110,8 +88,8 @@
   "model": "artifacts.product",
   "pk": 8,
   "fields": {
-    "name": "SecureHub",
-    "color_class": "bg-blue-600",
+    "name": "Ent-SAST/SAQT+DAST",
+    "color_class": "bg-pink-500",
     "display_order": 8
   }
 },
@@ -119,8 +97,8 @@
   "model": "artifacts.product",
   "pk": 9,
   "fields": {
-    "name": "On-Demand",
-    "color_class": "bg-teal-500",
+    "name": "Ent-SAST/SAQT+SCA",
+    "color_class": "bg-lime-500",
     "display_order": 9
   }
 },
@@ -128,16 +106,53 @@
   "model": "artifacts.product",
   "pk": 10,
   "fields": {
+    "name": "SecureHUB",
+    "color_class": "bg-blue-600",
+    "display_order": 10
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 11,
+  "fields": {
     "name": "MCP",
     "color_class": "bg-purple-500",
-    "display_order": 10
+    "display_order": 11
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 12,
+  "fields": {
+    "name": "On-demand",
+    "color_class": "bg-teal-500",
+    "display_order": 12
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 13,
+  "fields": {
+    "name": "G-Cloud",
+    "color_class": "bg-green-600",
+    "display_order": 13
+  }
+},
+{
+  "model": "artifacts.product",
+  "pk": 14,
+  "fields": {
+    "name": "P-cloud",
+    "color_class": "bg-cyan-500",
+    "display_order": 14
   }
 },
 {
   "model": "artifacts.category",
   "pk": 1,
   "fields": {
-    "name": "제품소개서",
+    "name": "릴리즈노트",
+    "department": "consulting",
     "display_order": 1
   }
 },
@@ -145,7 +160,8 @@
   "model": "artifacts.category",
   "pk": 2,
   "fields": {
-    "name": "브로슈어",
+    "name": "제품 기능비교표",
+    "department": "consulting",
     "display_order": 2
   }
 },
@@ -153,7 +169,8 @@
   "model": "artifacts.category",
   "pk": 3,
   "fields": {
-    "name": "사례집(Use-CASE)",
+    "name": "USE-CASE",
+    "department": "consulting",
     "display_order": 3
   }
 },
@@ -161,7 +178,8 @@
   "model": "artifacts.category",
   "pk": 4,
   "fields": {
-    "name": "제품비교표",
+    "name": "규격서",
+    "department": "consulting",
     "display_order": 4
   }
 },
@@ -169,7 +187,8 @@
   "model": "artifacts.category",
   "pk": 5,
   "fields": {
-    "name": "기능비교자료",
+    "name": "공공 사업계획서",
+    "department": "business",
     "display_order": 5
   }
 },
@@ -177,7 +196,8 @@
   "model": "artifacts.category",
   "pk": 6,
   "fields": {
-    "name": "BM비교자료",
+    "name": "금융 사업계획서",
+    "department": "business",
     "display_order": 6
   }
 },
@@ -185,7 +205,8 @@
   "model": "artifacts.category",
   "pk": 7,
   "fields": {
-    "name": "시장점유율",
+    "name": "기업 사업계획서",
+    "department": "business",
     "display_order": 7
   }
 },
@@ -193,7 +214,8 @@
   "model": "artifacts.category",
   "pk": 8,
   "fields": {
-    "name": "설치가이드",
+    "name": "시장점유율",
+    "department": "business",
     "display_order": 8
   }
 },
@@ -201,7 +223,8 @@
   "model": "artifacts.category",
   "pk": 9,
   "fields": {
-    "name": "사용설명서",
+    "name": "브로슈어",
+    "department": "marketing",
     "display_order": 9
   }
 },
@@ -209,7 +232,8 @@
   "model": "artifacts.category",
   "pk": 10,
   "fields": {
-    "name": "사용가이드",
+    "name": "제품소개서",
+    "department": "consulting",
     "display_order": 10
   }
 },
@@ -217,7 +241,8 @@
   "model": "artifacts.category",
   "pk": 11,
   "fields": {
-    "name": "관리자가이드",
+    "name": "표준 제안서",
+    "department": "consulting",
     "display_order": 11
   }
 },
@@ -225,7 +250,8 @@
   "model": "artifacts.category",
   "pk": 12,
   "fields": {
-    "name": "규격서",
+    "name": "BMT 체크리스트",
+    "department": "consulting",
     "display_order": 12
   }
 },
@@ -233,7 +259,8 @@
   "model": "artifacts.category",
   "pk": 13,
   "fields": {
-    "name": "릴리즈노트",
+    "name": "POC 체크리스트",
+    "department": "consulting",
     "display_order": 13
   }
 },
@@ -241,7 +268,8 @@
   "model": "artifacts.category",
   "pk": 14,
   "fields": {
-    "name": "사업계획서",
+    "name": "설치 가이드",
+    "department": "consulting",
     "display_order": 14
   }
 },
@@ -249,7 +277,8 @@
   "model": "artifacts.category",
   "pk": 15,
   "fields": {
-    "name": "컴플라이언스/가이드",
+    "name": "사용자 가이드",
+    "department": "consulting",
     "display_order": 15
   }
 },
@@ -257,7 +286,8 @@
   "model": "artifacts.category",
   "pk": 16,
   "fields": {
-    "name": "인증서",
+    "name": "관리자 가이드",
+    "department": "consulting",
     "display_order": 16
   }
 },
@@ -265,7 +295,8 @@
   "model": "artifacts.category",
   "pk": 17,
   "fields": {
-    "name": "특허정보",
+    "name": "시장동향자료",
+    "department": "marketing",
     "display_order": 17
   }
 }

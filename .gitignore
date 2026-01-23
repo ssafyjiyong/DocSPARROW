@@ -27,3 +27,9 @@ Thumbs.db
 
 # Local settings
 local_settings.py
+
+# User data (contains sensitive information)
+users.json
+.env
+*.secret
+

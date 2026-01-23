@@ -1,0 +1,47 @@
+[
+  {
+    "username": "admin",
+    "email": "admin@your-domain.com",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "is_staff": true,
+    "is_superuser": true,
+    "first_name": "관리자",
+    "last_name": ""
+  },
+  {
+    "username": "consulting",
+    "email": "consulting@your-domain.com",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "is_staff": true,
+    "is_superuser": false,
+    "first_name": "컨설팅",
+    "last_name": "팀"
+  },
+  {
+    "username": "business",
+    "email": "business@your-domain.com",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "is_staff": false,
+    "is_superuser": false,
+    "first_name": "영업",
+    "last_name": "팀"
+  },
+  {
+    "username": "marketing",
+    "email": "marketing@your-domain.com",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "is_staff": false,
+    "is_superuser": false,
+    "first_name": "마케팅",
+    "last_name": "팀"
+  },
+  {
+    "username": "user1",
+    "email": "user1@your-domain.com",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "is_staff": false,
+    "is_superuser": false,
+    "first_name": "사용자",
+    "last_name": "1"
+  }
+]

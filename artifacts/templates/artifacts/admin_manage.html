@@ -291,6 +291,70 @@
             </div>
         </div>
     </div>
+
+    <!-- Disabled Cells Management Section -->
+    <div class="mb-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden"
+         x-data="disabledCellManager()">
+        <div class="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-ban text-white text-xl"></i>
+                <div>
+                    <h2 class="text-xl font-bold text-white">N/A 셀 관리</h2>
+                    <p class="text-red-100 text-sm">제품-카테고리 조합별 해당 없음 설정</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Scrollbar -->
+        <div class="px-6">
+            <div id="naTopScrollbar" class="overflow-x-auto overflow-y-hidden bg-slate-100 border border-slate-200 rounded" style="height: 17px;">
+                <div id="naTopScrollbarContent" style="height: 1px;"></div>
+            </div>
+        </div>
+        
+        <!-- Main Table Container -->
+        <div id="naTableContainer" class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full border-collapse">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider border">
+                                카테고리 및 제품
+                            </th>
+                            {% for product in products %}
+                            <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider border">
+                                {{ product.name }}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
+                        {% for category in categories %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 border">
+                                <i class="fas fa-file-lines text-slate-400 mr-2"></i>
+                                {{ category.name }}
+                            </td>
+                            {% for product in products %}
+                            <td class="px-4 py-3 text-center border">
+                                <!-- Checkbox Style Toggle -->
+                                <label class="inline-flex items-center cursor-pointer group">
+                                    <input type="checkbox" 
+                                           :checked="isCellDisabled({{ product.id }}, {{ category.id }})"
+                                           @change="toggleCell({{ product.id }}, {{ category.id }})"
+                                           class="sr-only peer">
+                                    <div class="relative w-10 h-5 bg-green-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-400">
+                                    </div>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -492,5 +556,114 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+function disabledCellManager() {
+    return {
+        disabledCells: new Set({{ disabled_set|default:'[]'|safe }}.map(([p, c]) => `${p}-${c}`)),
+        
+        isCellDisabled(productId, categoryId) {
+            return this.disabledCells.has(`${productId}-${categoryId}`);
+        },
+        
+        async toggleCell(productId, categoryId) {
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('category_id', categoryId);
+            
+            try {
+                const response = await fetch('/manage/toggle-disabled-cell/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {'X-CSRFToken': getCookie('csrftoken')}
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const key = `${productId}-${categoryId}`;
+                    if (result.disabled) {
+                        this.disabledCells.add(key);
+                    } else {
+                        this.disabledCells.delete(key);
+                    }
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('셀 상태 변경에 실패했습니다.', 'error');
+            }
+        }
+    };
+}
+
+// Scroll synchronization for N/A cell management table
+document.addEventListener('DOMContentLoaded', function() {
+    // Use setTimeout to ensure all rendering is complete
+    setTimeout(function() {
+        const naTopScrollbar = document.getElementById('naTopScrollbar');
+        const naTableContainer = document.getElementById('naTableContainer');
+        const naTopScrollbarContent = document.getElementById('naTopScrollbarContent');
+        
+        if (naTopScrollbar && naTableContainer && naTopScrollbarContent) {
+            const scrollableDiv = naTableContainer.querySelector('.overflow-x-auto');
+            const table = scrollableDiv ? scrollableDiv.querySelector('table') : null;
+            
+            if (!table) {
+                console.error('N/A table not found');
+                return;
+            }
+            
+            // Set the dummy scrollbar content width to match the table width
+            function updateNAScrollbarWidth() {
+                // IMPORTANT: Use scrollWidth to get the actual scrollable width
+                const tableWidth = table.scrollWidth;
+                console.log('Table scroll width:', tableWidth);
+                // Set width explicitly with px
+                naTopScrollbarContent.style.width = tableWidth + 'px';
+                console.log('Set scrollbar content width to:', naTopScrollbarContent.style.width);
+            }
+            
+            // Initial setup with multiple attempts to ensure it works
+            requestAnimationFrame(function() {
+                updateNAScrollbarWidth();
+                setTimeout(updateNAScrollbarWidth, 100);
+                setTimeout(updateNAScrollbarWidth, 300);
+                setTimeout(updateNAScrollbarWidth, 1000);
+            });
+            
+            // Update on window resize
+            window.addEventListener('resize', updateNAScrollbarWidth);
+            
+            // Sync scroll from top scrollbar to table container
+            let isTopScrolling = false;
+            naTopScrollbar.addEventListener('scroll', function() {
+                if (!isTopScrolling && scrollableDiv) {
+                    isTopScrolling = true;
+                    scrollableDiv.scrollLeft = naTopScrollbar.scrollLeft;
+                    setTimeout(() => isTopScrolling = false, 10);
+                }
+            });
+            
+            // Sync scroll from table container to top scrollbar
+            let isTableScrolling = false;
+            if (scrollableDiv) {
+                scrollableDiv.addEventListener('scroll', function() {
+                    if (!isTableScrolling) {
+                        isTableScrolling = true;
+                        naTopScrollbar.scrollLeft = scrollableDiv.scrollLeft;
+                        setTimeout(() => isTableScrolling = false, 10);
+                    }
+                });
+            }
+        } else {
+            console.error('Required scrollbar elements not found:', {
+                naTopScrollbar: !!naTopScrollbar,
+                naTableContainer: !!naTableContainer,
+                naTopScrollbarContent: !!naTopScrollbarContent
+            });
+        }
+    }, 100);
+});
 </script>
 {% endblock %}

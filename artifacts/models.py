@@ -120,3 +120,25 @@ class Artifact(models.Model):
         import os
         return os.path.basename(self.file.name)
 
+
+class ProductCategoryDisabled(models.Model):
+    """제품-카테고리 비활성화 (해당 없음 표시)"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,
+                               related_name='disabled_categories', verbose_name="제품")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE,
+                                related_name='disabled_products', verbose_name="카테고리")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="비활성화 일시")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                  verbose_name="비활성화한 관리자")
+
+    class Meta:
+        verbose_name = "비활성화된 셀"
+        verbose_name_plural = "비활성화된 셀"
+        unique_together = [['product', 'category']]
+        indexes = [
+            models.Index(fields=['product', 'category']),
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} - {self.category.name} (비활성화)"
+

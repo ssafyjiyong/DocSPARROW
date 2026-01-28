@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
-from .models import Category, Product
+from .models import Category, Product, ProductCategoryDisabled
 import json
 
 
@@ -19,9 +19,15 @@ def admin_management(request):
     categories = Category.objects.all()
     products = Product.objects.all()
     
+    # Get all disabled cells for the UI
+    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    # Convert to list of lists for JavaScript compatibility
+    disabled_set = [[dc.product.id, dc.category.id] for dc in disabled_cells]
+    
     context = {
         'categories': categories,
         'products': products,
+        'disabled_set': disabled_set,
     }
     
     return render(request, 'artifacts/admin_manage.html', context)
@@ -223,5 +229,66 @@ def product_delete(request, product_id):
             'success': True,
             'message': f'"{product_name}" 제품이 삭제되었습니다.'
         })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def get_disabled_cells(request):
+    """Get all disabled product-category combinations"""
+    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    
+    disabled_list = [{
+        'product_id': cell.product.id,
+        'category_id': cell.category.id,
+        'product_name': cell.product.name,
+        'category_name': cell.category.name,
+    } for cell in disabled_cells]
+    
+    return JsonResponse({'disabled_cells': disabled_list})
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(["POST"])
+def toggle_disabled_cell(request):
+    """Toggle disabled status for a product-category combination"""
+    try:
+        product_id = request.POST.get('product_id')
+        category_id = request.POST.get('category_id')
+        
+        if not product_id or not category_id:
+            return JsonResponse({'success': False, 'error': '제품과 카테고리를 선택해주세요.'}, status=400)
+        
+        product = get_object_or_404(Product, id=product_id)
+        category = get_object_or_404(Category, id=category_id)
+        
+        # Check if already disabled
+        disabled = ProductCategoryDisabled.objects.filter(
+            product=product,
+            category=category
+        ).first()
+        
+        if disabled:
+            # Enable (remove from disabled list)
+            disabled.delete()
+            return JsonResponse({
+                'success': True,
+                'disabled': False,
+                'message': f'{product.name} - {category.name} 셀을 활성화했습니다.'
+            })
+        else:
+            # Disable (add to disabled list)
+            ProductCategoryDisabled.objects.create(
+                product=product,
+                category=category,
+                created_by=request.user
+            )
+            return JsonResponse({
+                'success': True,
+                'disabled': True,
+                'message': f'{product.name} - {category.name} 셀을 비활성화했습니다.'
+            })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

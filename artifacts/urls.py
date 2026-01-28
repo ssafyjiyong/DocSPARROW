@@ -23,4 +23,6 @@ urlpatterns = [
     path('manage/product/create/', manage_views.product_create, name='product_create'),
     path('manage/product/<int:product_id>/update/', manage_views.product_update, name='product_update'),
     path('manage/product/<int:product_id>/delete/', manage_views.product_delete, name='product_delete'),
+    path('manage/disabled-cells/', manage_views.get_disabled_cells, name='get_disabled_cells'),
+    path('manage/toggle-disabled-cell/', manage_views.toggle_disabled_cell, name='toggle_disabled_cell'),
 ]

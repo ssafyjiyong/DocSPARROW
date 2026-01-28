@@ -66,28 +66,32 @@
                     </th>
                     <!-- Product Headers -->
                     {% for product in products %}
-                    <th class="sticky-header grid-cell {{ product.color_class }} p-2 px-3 border-l-2 border-white/30">
-                        <div class="text-center space-y-1">
-                            <div class="font-bold text-sm text-white drop-shadow-sm">{{ product.name }}</div>
+                    <th class="sticky-header grid-cell {{ product.color_class }} p-2 px-3 border-l-2 border-white/30" style="height: 140px; vertical-align: top; position: relative;">
+                        <div style="position: relative; height: 100%; padding-bottom: 70px;">
+                            <!-- Product Name - At top -->
+                            <div class="font-bold text-sm text-white drop-shadow-sm text-center mb-1">{{ product.name }}</div>
                             
-                            <!-- Version Filter Dropdown -->
-                            <select id="version_{{ product.id }}" 
-                                    onchange="filterByVersion({{ product.id }})"
-                                    class="w-full px-2 py-1 bg-white/20 text-white text-xs rounded-md border border-white/30 hover:bg-white/30 transition-all"
-                                    style="color: white;">
-                                <option value="" style="background-color: white; color: black;">전체 버전</option>
-                                {% for version in product_versions|get_item:product.id %}
-                                <option value="{{ version }}" {% if version_filters|get_item:product.id == version %}selected{% endif %} style="background-color: white; color: black;">
-                                    v{{ version }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            
-                            
-                            <button onclick="event.stopPropagation(); downloadProductBulk({{ product.id }}, '{{ product.name|escapejs }}', '{{ selected_country.code }}')" 
-                                    class="px-2 py-1 bg-white/20 hover:bg-white/30 rounded-md text-xs text-white transition-all inline-flex items-center gap-1">
-                                <i class="fas fa-download"></i> 일괄 다운로드
-                            </button>
+                            <!-- Controls - At bottom using absolute positioning -->
+                            <div class="space-y-1" style="position: absolute; bottom: 0; left: 0; right: 0;">
+                                <!-- Version Filter Dropdown -->
+                                <select id="version_{{ product.id }}" 
+                                        onchange="filterByVersion({{ product.id }})"
+                                        class="w-full px-2 py-1 bg-white/20 text-white text-xs rounded-md border border-white/30 hover:bg-white/30 transition-all"
+                                        style="color: white;">
+                                    <option value="" style="background-color: white; color: black;">전체 버전</option>
+                                    {% for version in product_versions|get_item:product.id %}
+                                    <option value="{{ version }}" {% if version_filters|get_item:product.id == version %}selected{% endif %} style="background-color: white; color: black;">
+                                        v{{ version }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                
+                                
+                                <button onclick="event.stopPropagation(); downloadProductBulk({{ product.id }}, '{{ product.name|escapejs }}', '{{ selected_country.code }}')" 
+                                        class="px-2 py-1 bg-white/20 hover:bg-white/30 rounded-md text-xs text-white transition-all inline-flex items-center gap-1 w-full justify-center">
+                                    <i class="fas fa-download"></i> 일괄 다운로드
+                                </button>
+                            </div>
                         </div>
                     </th>
                     {% endfor %}
@@ -106,9 +110,17 @@
                     <!-- Artifact Cells -->
                     {% for cell in row.cells %}
                     <td class="grid-cell border-t border-l-2 border-slate-200 p-1.5 align-top bg-white group-hover:bg-blue-50/30 transition-colors">
-                        {% if cell.artifact %}
+                        {% if cell.is_disabled %}
+                        <!-- N/A State: Disabled Cell -->
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-2 min-h-[100px] flex flex-col items-center justify-center border-2 border-dashed border-red-200">
+                            <div class="w-8 h-8 bg-red-200 rounded-full flex items-center justify-center mb-1">
+                                <i class="fas fa-ban text-red-500 text-base"></i>
+                            </div>
+                            <span class="text-[10px] text-red-500 font-medium">해당 없음</span>
+                        </div>
+                        {% elif cell.artifact %}
                         <!-- Filled State: Artifact Card -->
-                        <div class="card-hover bg-gradient-to-br from-white to-slate-50 rounded-lg shadow-sm p-2 h-full flex flex-col border border-slate-200/50 hover:border-blue-300 relative">
+                        <div class="card-hover bg-gradient-to-br from-white to-slate-50 rounded-lg shadow-sm p-2 min-h-[100px] flex flex-col border border-slate-200/50 hover:border-blue-300 relative">
                             <div onclick="openHistoryModal({{ cell.product.id }}, {{ row.category.id }})" class="cursor-pointer flex-1">
                                 <div class="flex items-center gap-1.5 mb-1.5">
                                     <div class="w-6 h-6 {{ cell.product.color_class }} rounded-md flex items-center justify-center shadow-sm">
@@ -133,7 +145,7 @@
                         </div>
                         {% else %}
                         <!-- Empty State -->
-                        <div onclick="openHistoryModal({{ cell.product.id }}, {{ row.category.id }})" class="empty-cell-hover bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-2 h-full flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-slate-200 hover:border-blue-300 transition-all">
+                        <div onclick="openHistoryModal({{ cell.product.id }}, {{ row.category.id }})" class="empty-cell-hover bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-2 min-h-[100px] flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-slate-200 hover:border-blue-300 transition-all">
                             <div class="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center mb-1">
                                 <i class="fa-regular fa-face-meh text-slate-400 text-base"></i>
                             </div>

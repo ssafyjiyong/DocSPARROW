@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache, cache_control
 from django.db.models import Max
 from django.utils import timezone
-from .models import Country, Product, ProductVersion, Category, Artifact
+from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled
 import json
 
 
@@ -110,6 +110,10 @@ def dashboard(request):
         ).values_list('version_string', flat=True).distinct().order_by('-version_string')
         product_versions[product.id] = list(versions)
     
+    # Get disabled cells
+    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    disabled_set = {(dc.product.id, dc.category.id) for dc in disabled_cells}
+    
     # 매트릭스 데이터 구성
     matrix_data = []
     for category in categories:
@@ -133,11 +137,15 @@ def dashboard(request):
             if version_filter:
                 query = query.filter(version_string=version_filter)
             
-            latest_artifact = query.order_by('-created_at').first()
+            latest_artifact = query.order_by('-version_string').first()
+            
+            # Check if this cell is disabled
+            is_disabled = (product.id, category.id) in disabled_set
             
             row_data['cells'].append({
                 'product': product,
                 'artifact': latest_artifact,
+                'is_disabled': is_disabled,
             })
         
         matrix_data.append(row_data)
@@ -152,6 +160,7 @@ def dashboard(request):
         'version_filters': version_filters,
         'departments': departments,
         'selected_department': selected_department,
+        'disabled_set': disabled_set,
     }
     
     return render(request, 'artifacts/index.html', context)
@@ -174,7 +183,7 @@ def artifact_history(request, product_id, category_id):
         country=country,
         product=product,
         category=category
-    ).select_related('uploader')
+    ).select_related('uploader').order_by('-version_string')
     
     history_data = [{
         'id': artifact.id,
@@ -210,11 +219,40 @@ def artifact_upload(request, product_id, category_id):
     else:
         country = Country.objects.filter(code='KR').first()
     
+    # Check if this cell is disabled
+    is_disabled = ProductCategoryDisabled.objects.filter(
+        product=product,
+        category=category
+    ).exists()
+    
+    if is_disabled:
+        return JsonResponse({'error': '이 셀은 해당 없음으로 설정되어 업로드가 불가능합니다.'}, status=403)
+    
     version_string = request.POST.get('version_string')
     file = request.FILES.get('file')
     
     if not version_string or not file:
         return JsonResponse({'error': '버전과 파일을 모두 입력해주세요.'}, status=400)
+    
+    # Validate filename format: 제품명_카테고리명_버전명.확장자
+    # US의 경우: EN_제품명_카테고리명_버전명.확장자
+    filename = file.name
+    filename_without_ext = filename.rsplit('.', 1)[0] if '.' in filename else filename
+    
+    # Expected format based on country
+    if country and country.code == 'US':
+        # US format: EN_ProductName_CategoryName_vX.Y.Z
+        expected_prefix = f"EN_{product.name}_{category.name}_v{version_string}"
+    else:
+        # Default (KR) format: ProductName_CategoryName_vX.Y.Z
+        expected_prefix = f"{product.name}_{category.name}_v{version_string}"
+    
+    if not filename_without_ext == expected_prefix:
+        return JsonResponse({
+            'error': f'파일명 양식이 올바르지 않습니다.\n\n'
+                    f'올바른 형식: {expected_prefix}.확장자\n'
+                    f'현재 파일명: {filename}'
+        }, status=400)
     
     # Check for duplicate version
     existing = Artifact.objects.filter(

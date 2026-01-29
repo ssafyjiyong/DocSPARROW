@@ -144,6 +144,8 @@
                             <a href="{% url 'artifacts:admin_manage' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
                                 <i class="fas fa-tools"></i> 관리
                             </a>
+                            {% endif %}
+                            {% if user.is_superuser %}
                             <a href="{% url 'admin:index' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
                                 <i class="fas fa-cog"></i> Admin
                             </a>

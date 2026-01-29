@@ -145,3 +145,33 @@ class ProductCategoryDisabled(models.Model):
         return f"[{self.country.code}] {self.product.name} - {self.category.name} (비활성화)"
 
 
+class LoginAttempt(models.Model):
+    """로그인 시도 기록 (Superuser 전용 조회)"""
+    username = models.CharField(max_length=150, verbose_name="사용자명",
+                               help_text="로그인 시도한 username (실패 시에도 기록)")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                            related_name='login_attempts', verbose_name="사용자",
+                            help_text="로그인 성공 시 User 객체")
+    ip_address = models.GenericIPAddressField(verbose_name="IP 주소", null=True, blank=True)
+    user_agent = models.TextField(verbose_name="User Agent", blank=True,
+                                  help_text="브라우저 및 OS 정보")
+    success = models.BooleanField(default=False, verbose_name="성공 여부")
+    failure_reason = models.CharField(max_length=255, verbose_name="실패 이유",
+                                     blank=True, help_text="로그인 실패 시 이유")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="시도 시간")
+
+    class Meta:
+        verbose_name = "로그인 시도"
+        verbose_name_plural = "로그인 시도"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['username', '-created_at']),
+            models.Index(fields=['success', '-created_at']),
+        ]
+
+    def __str__(self):
+        status = "성공" if self.success else "실패"
+        return f"{self.username} - {status} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
+
+

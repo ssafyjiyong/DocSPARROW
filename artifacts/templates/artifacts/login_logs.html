@@ -1,0 +1,260 @@
+{% extends "artifacts/base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto" x-data="loginLogsManager()">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-shield-halved text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-800">로그인 시도 로그</h1>
+                    <p class="text-slate-500">시스템 접속 기록</p>
+                </div>
+            </div>
+            
+            <a href="{% url 'artifacts:admin_manage' %}" 
+               class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i>
+                관리자 페이지
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="mb-6 bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 p-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Success Filter -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-filter mr-1"></i> 상태
+                </label>
+                <select x-model="filters.success" @change="loadLogs()" 
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <option value="">전체</option>
+                    <option value="true">성공</option>
+                    <option value="false">실패</option>
+                </select>
+            </div>
+
+            <!-- Username Search -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-user mr-1"></i> 사용자명
+                </label>
+                <input type="text" x-model="filters.username" @input.debounce.500ms="loadLogs()" 
+                       placeholder="사용자명 검색"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+            </div>
+
+            <!-- Date From -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-calendar mr-1"></i> 시작 날짜
+                </label>
+                <input type="date" x-model="filters.date_from" @change="loadLogs()" 
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+            </div>
+
+            <!-- Date To -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-calendar mr-1"></i> 종료 날짜
+                </label>
+                <input type="date" x-model="filters.date_to" @change="loadLogs()" 
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
+        <div class="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-list text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">로그인 시도 목록</h2>
+            </div>
+            <div class="text-white text-sm">
+                <span x-text="pagination.total_count"></span> 건
+            </div>
+        </div>
+
+        <div class="p-6">
+            <!-- Loading State -->
+            <div x-show="loading" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-3xl text-amber-500 mb-2"></i>
+                <p class="text-slate-600">로딩 중...</p>
+            </div>
+
+            <!-- Table -->
+            <div x-show="!loading" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">상태</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">사용자명</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">IP 주소</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">시간</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User-Agent</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">실패 이유</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200">
+                        <template x-for="log in logs" :key="log.id">
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span x-show="log.success" class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 flex items-center gap-1 w-fit">
+                                        <i class="fas fa-check-circle"></i> 성공
+                                    </span>
+                                    <span x-show="!log.success" class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 flex items-center gap-1 w-fit">
+                                        <i class="fas fa-times-circle"></i> 실패
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-user text-slate-400"></i>
+                                        <span class="text-sm font-medium text-slate-900" x-text="log.username"></span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-sm text-slate-600 font-mono" x-text="log.ip_address || '-'"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-sm text-slate-600" x-text="log.created_at"></span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-xs text-slate-500 font-mono line-clamp-2" 
+                                          x-text="log.user_agent || '-'"
+                                          :title="log.user_agent"></span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-sm text-red-600" 
+                                          x-show="!log.success" 
+                                          x-text="log.failure_reason || '-'"></span>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="logs.length === 0 && !loading">
+                            <td colspan="6" class="px-6 py-8 text-center text-slate-500">
+                                <i class="fas fa-inbox text-3xl mb-2 block text-slate-300"></i>
+                                조건에 맞는 로그가 없습니다.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div x-show="!loading && pagination.total_pages > 1" class="mt-6 flex justify-between items-center">
+                <button @click="changePage(pagination.current_page - 1)" 
+                        :disabled="!pagination.has_previous"
+                        class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-chevron-left mr-1"></i> 이전
+                </button>
+                
+                <span class="text-sm text-slate-600">
+                    페이지 <span x-text="pagination.current_page"></span> / <span x-text="pagination.total_pages"></span>
+                </span>
+                
+                <button @click="changePage(pagination.current_page + 1)" 
+                        :disabled="!pagination.has_next"
+                        class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    다음 <i class="fas fa-chevron-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    [x-cloak] { display: none !important; }
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loginLogsManager() {
+    return {
+        logs: [],
+        loading: false,
+        filters: {
+            success: '',
+            username: '',
+            date_from: '',
+            date_to: ''
+        },
+        pagination: {
+            current_page: 1,
+            total_pages: 1,
+            total_count: 0,
+            has_previous: false,
+            has_next: false
+        },
+        
+        init() {
+            this.loadLogs();
+        },
+        
+        async loadLogs(page = 1) {
+            this.loading = true;
+            
+            const params = new URLSearchParams({
+                page: page,
+                success: this.filters.success,
+                username: this.filters.username,
+                date_from: this.filters.date_from,
+                date_to: this.filters.date_to
+            });
+            
+            try {
+                const response = await fetch(`/manage/api/login-logs/?${params}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.logs = result.logs;
+                    this.pagination = result.pagination;
+                } else {
+                    showNotification(result.error || '로그를 불러오는데 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                showNotification('로그를 불러오는데 실패했습니다.', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        changePage(page) {
+            this.loadLogs(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+}
+
+function showNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    } text-white font-medium animate-fade-in`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        ${message}
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+</script>
+{% endblock %}

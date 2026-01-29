@@ -8,8 +8,23 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache, cache_control
 from django.db.models import Max
 from django.utils import timezone
-from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled
+from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled, LoginAttempt
 import json
+
+
+def get_client_ip(request):
+    """클라이언트의 실제 IP 주소를 가져옵니다 (프록시 고려)"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+def get_user_agent(request):
+    """클라이언트의 User-Agent를 가져옵니다"""
+    return request.META.get('HTTP_USER_AGENT', '')[:500]  # 최대 500자로 제한
 
 
 def user_login(request):
@@ -19,11 +34,34 @@ def user_login(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         
+        # IP 주소와 User-Agent 추출
+        ip_address = get_client_ip(request)
+        user_agent = get_user_agent(request)
+        
         if user is not None:
             login(request, user)
+            
+            # 로그인 성공 기록
+            LoginAttempt.objects.create(
+                username=username,
+                user=user,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=True
+            )
+            
             # 로그인 성공 시 항상 대시보드로 리다이렉트
             return redirect('artifacts:dashboard')
         else:
+            # 로그인 실패 기록
+            LoginAttempt.objects.create(
+                username=username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                failure_reason='잘못된 사용자명 또는 비밀번호'
+            )
+            
             return render(request, 'artifacts/login.html', {
                 'error': '아이디 또는 비밀번호가 올바르지 않습니다.'
             })

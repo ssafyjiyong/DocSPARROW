@@ -12,6 +12,12 @@ def is_staff_user(user):
     return user.is_staff
 
 
+def is_superuser(user):
+    """Check if user is superuser"""
+    return user.is_superuser
+
+
+
 @login_required
 @user_passes_test(is_staff_user)
 def admin_management(request):
@@ -321,3 +327,95 @@ def toggle_disabled_cell(request):
             })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_superuser)
+def login_logs_view(request):
+    """로그인 로그 페이지"""
+    return render(request, 'artifacts/login_logs.html')
+
+
+@login_required
+@user_passes_test(is_superuser)
+def get_login_logs_api(request):
+    """로그인 로그 데이터 조회 API"""
+    from .models import LoginAttempt
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    
+    try:
+        # 필터 파라미터
+        success_filter = request.GET.get('success', '')  # 'true', 'false', or ''
+        username_search = request.GET.get('username', '').strip()
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        page_number = int(request.GET.get('page', 1))
+        
+        # 쿼리 시작
+        query = LoginAttempt.objects.select_related('user').all()
+        
+        # 성공/실패 필터
+        if success_filter == 'true':
+            query = query.filter(success=True)
+        elif success_filter == 'false':
+            query = query.filter(success=False)
+        
+        # 사용자명 검색
+        if username_search:
+            query = query.filter(username__icontains=username_search)
+        
+        # 날짜 범위 필터
+        if date_from:
+            try:
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                # 한국 시간대로 변환
+                date_from_aware = timezone.make_aware(date_from_obj)
+                query = query.filter(created_at__gte=date_from_aware)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+                # 하루의 끝까지 포함
+                date_to_obj = date_to_obj + timedelta(days=1)
+                date_to_aware = timezone.make_aware(date_to_obj)
+                query = query.filter(created_at__lt=date_to_aware)
+            except ValueError:
+                pass
+        
+        # 페이지네이션
+        paginator = Paginator(query, 50)  # 페이지당 50개
+        page_obj = paginator.get_page(page_number)
+        
+        # 데이터 직렬화
+        logs = []
+        for attempt in page_obj:
+            logs.append({
+                'id': attempt.id,
+                'username': attempt.username,
+                'user_id': attempt.user.id if attempt.user else None,
+                'user_fullname': attempt.user.get_full_name() if attempt.user else None,
+                'ip_address': attempt.ip_address,
+                'user_agent': attempt.user_agent,
+                'success': attempt.success,
+                'failure_reason': attempt.failure_reason,
+                'created_at': timezone.localtime(attempt.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'logs': logs,
+            'pagination': {
+                'current_page': page_obj.number,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'has_previous': page_obj.has_previous(),
+                'has_next': page_obj.has_next(),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+

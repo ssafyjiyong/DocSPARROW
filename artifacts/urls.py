@@ -25,4 +25,8 @@ urlpatterns = [
     path('manage/product/<int:product_id>/delete/', manage_views.product_delete, name='product_delete'),
     path('manage/disabled-cells/', manage_views.get_disabled_cells, name='get_disabled_cells'),
     path('manage/toggle-disabled-cell/', manage_views.toggle_disabled_cell, name='toggle_disabled_cell'),
+    
+    # Login Logs URLs (Superuser only)
+    path('manage/login-logs/', manage_views.login_logs_view, name='login_logs'),
+    path('manage/api/login-logs/', manage_views.get_login_logs_api, name='get_login_logs_api'),
 ]

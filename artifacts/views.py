@@ -110,8 +110,10 @@ def dashboard(request):
         ).values_list('version_string', flat=True).distinct().order_by('-version_string')
         product_versions[product.id] = list(versions)
     
-    # Get disabled cells
-    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    # Get disabled cells for the selected country
+    disabled_cells = ProductCategoryDisabled.objects.filter(
+        country=selected_country
+    ).select_related('product', 'category')
     disabled_set = {(dc.product.id, dc.category.id) for dc in disabled_cells}
     
     # 매트릭스 데이터 구성

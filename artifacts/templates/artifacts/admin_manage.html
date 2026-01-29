@@ -296,11 +296,28 @@
     <div class="mb-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden"
          x-data="disabledCellManager()">
         <div class="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-ban text-white text-xl"></i>
-                <div>
-                    <h2 class="text-xl font-bold text-white">N/A 셀 관리</h2>
-                    <p class="text-red-100 text-sm">제품-카테고리 조합별 해당 없음 설정</p>
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-ban text-white text-xl"></i>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">N/A 셀관리</h2>
+                        <p class="text-red-100 text-sm">제품-카테고리 조합별 해당 없음 설정</p>
+                    </div>
+                </div>
+                
+                <!-- Country Selector -->
+                <div class="flex items-center gap-2">
+                    <label for="naCountrySelect" class="text-white text-sm font-medium">국가:</label>
+                    <select id="naCountrySelect" 
+                            x-model.number="selectedCountryId"
+                            @change="loadDisabledCells()"
+                            class="px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
+                        {% for country in countries %}
+                        <option value="{{ country.id }}" style="color: #000; background-color: #fff;" {% if country.id == selected_country.id %}selected{% endif %}>
+                            {{ country.name }} ({{ country.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
         </div>
@@ -558,17 +575,53 @@ function getCookie(name) {
 }
 
 function disabledCellManager() {
+    // 초기 데이터를 Object로 변환 (Alpine.js 반응성 보장)
+    const initialDisabled = {};
+    {{ disabled_set|default:'[]'|safe }}.forEach(([p, c]) => {
+        initialDisabled[`${p}-${c}`] = true;
+    });
+    
     return {
-        disabledCells: new Set({{ disabled_set|default:'[]'|safe }}.map(([p, c]) => `${p}-${c}`)),
+        selectedCountryId: {{ selected_country.id }},
+        disabledCells: initialDisabled,
         
         isCellDisabled(productId, categoryId) {
-            return this.disabledCells.has(`${productId}-${categoryId}`);
+            return !!this.disabledCells[`${productId}-${categoryId}`];
+        },
+        
+        async loadDisabledCells() {
+            console.log('Loading disabled cells for country:', this.selectedCountryId);
+            try {
+                const response = await fetch(`/manage/disabled-cells/?country_id=${this.selectedCountryId}`);
+                console.log('Response status:', response.status);
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                if (result.disabled_cells) {
+                    // 새 Object 생성하여 반응성 트리거
+                    const newDisabled = {};
+                    result.disabled_cells.forEach(cell => {
+                        newDisabled[`${cell.product_id}-${cell.category_id}`] = true;
+                    });
+                    this.disabledCells = newDisabled;
+                    console.log('Loaded disabled cells:', this.disabledCells);
+                    showNotification(`${result.disabled_cells.length}개의 비활성화 셀을 로드했습니다.`, 'success');
+                } else if (result.error) {
+                    console.error('API error:', result.error);
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading disabled cells:', error);
+                showNotification('비활성화 셀 로드에 실패했습니다.', 'error');
+            }
         },
         
         async toggleCell(productId, categoryId) {
+            console.log('Toggling cell:', productId, categoryId, 'for country:', this.selectedCountryId);
             const formData = new FormData();
             formData.append('product_id', productId);
             formData.append('category_id', categoryId);
+            formData.append('country_id', this.selectedCountryId);
             
             try {
                 const response = await fetch('/manage/toggle-disabled-cell/', {
@@ -576,14 +629,20 @@ function disabledCellManager() {
                     body: formData,
                     headers: {'X-CSRFToken': getCookie('csrftoken')}
                 });
+                console.log('Toggle response status:', response.status);
                 const result = await response.json();
+                console.log('Toggle response data:', result);
                 
                 if (result.success) {
                     const key = `${productId}-${categoryId}`;
                     if (result.disabled) {
-                        this.disabledCells.add(key);
+                        // 새 객체로 할당하여 반응성 보장
+                        this.disabledCells = {...this.disabledCells, [key]: true};
                     } else {
-                        this.disabledCells.delete(key);
+                        // 키 삭제 후 새 객체로 할당
+                        const newDisabled = {...this.disabledCells};
+                        delete newDisabled[key];
+                        this.disabledCells = newDisabled;
                     }
                     showNotification(result.message, 'success');
                 } else {

@@ -16,17 +16,31 @@ def is_staff_user(user):
 @user_passes_test(is_staff_user)
 def admin_management(request):
     """Admin management page for categories and products"""
+    from .models import Country
+    
     categories = Category.objects.all()
     products = Product.objects.all()
+    countries = Country.objects.all()
     
-    # Get all disabled cells for the UI
-    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    # Get current selected country (default to first country, typically KR)
+    selected_country_id = request.GET.get('country_id')
+    if selected_country_id:
+        selected_country = get_object_or_404(Country, id=selected_country_id)
+    else:
+        selected_country = countries.first()
+    
+    # Get disabled cells for the selected country
+    disabled_cells = ProductCategoryDisabled.objects.filter(
+        country=selected_country
+    ).select_related('product', 'category')
     # Convert to list of lists for JavaScript compatibility
     disabled_set = [[dc.product.id, dc.category.id] for dc in disabled_cells]
     
     context = {
         'categories': categories,
         'products': products,
+        'countries': countries,
+        'selected_country': selected_country,
         'disabled_set': disabled_set,
     }
     
@@ -236,8 +250,17 @@ def product_delete(request, product_id):
 @login_required
 @user_passes_test(is_staff_user)
 def get_disabled_cells(request):
-    """Get all disabled product-category combinations"""
-    disabled_cells = ProductCategoryDisabled.objects.all().select_related('product', 'category')
+    """Get all disabled product-category combinations for a specific country"""
+    from .models import Country
+    
+    country_id = request.GET.get('country_id')
+    if not country_id:
+        return JsonResponse({'success': False, 'error': 'country_id가 필요합니다.'}, status=400)
+    
+    country = get_object_or_404(Country, id=country_id)
+    disabled_cells = ProductCategoryDisabled.objects.filter(
+        country=country
+    ).select_related('product', 'category')
     
     disabled_list = [{
         'product_id': cell.product.id,
@@ -253,19 +276,24 @@ def get_disabled_cells(request):
 @user_passes_test(is_staff_user)
 @require_http_methods(["POST"])
 def toggle_disabled_cell(request):
-    """Toggle disabled status for a product-category combination"""
+    """Toggle disabled status for a product-category combination for a specific country"""
+    from .models import Country
+    
     try:
         product_id = request.POST.get('product_id')
         category_id = request.POST.get('category_id')
+        country_id = request.POST.get('country_id')
         
-        if not product_id or not category_id:
-            return JsonResponse({'success': False, 'error': '제품과 카테고리를 선택해주세요.'}, status=400)
+        if not product_id or not category_id or not country_id:
+            return JsonResponse({'success': False, 'error': '제품, 카테고리, 국가를 모두 선택해주세요.'}, status=400)
         
         product = get_object_or_404(Product, id=product_id)
         category = get_object_or_404(Category, id=category_id)
+        country = get_object_or_404(Country, id=country_id)
         
-        # Check if already disabled
+        # Check if already disabled for this country
         disabled = ProductCategoryDisabled.objects.filter(
+            country=country,
             product=product,
             category=category
         ).first()
@@ -276,11 +304,12 @@ def toggle_disabled_cell(request):
             return JsonResponse({
                 'success': True,
                 'disabled': False,
-                'message': f'{product.name} - {category.name} 셀을 활성화했습니다.'
+                'message': f'[{country.code}] {product.name} - {category.name} 셀을 활성화했습니다.'
             })
         else:
             # Disable (add to disabled list)
             ProductCategoryDisabled.objects.create(
+                country=country,
                 product=product,
                 category=category,
                 created_by=request.user
@@ -288,7 +317,7 @@ def toggle_disabled_cell(request):
             return JsonResponse({
                 'success': True,
                 'disabled': True,
-                'message': f'{product.name} - {category.name} 셀을 비활성화했습니다.'
+                'message': f'[{country.code}] {product.name} - {category.name} 셀을 비활성화했습니다.'
             })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

@@ -122,7 +122,9 @@ class Artifact(models.Model):
 
 
 class ProductCategoryDisabled(models.Model):
-    """제품-카테고리 비활성화 (해당 없음 표시)"""
+    """제품-카테고리 비활성화 (해당 없음 표시) - 국가별"""
+    country = models.ForeignKey(Country, on_delete=models.CASCADE,
+                               related_name='disabled_cells', verbose_name="국가")
     product = models.ForeignKey(Product, on_delete=models.CASCADE,
                                related_name='disabled_categories', verbose_name="제품")
     category = models.ForeignKey(Category, on_delete=models.CASCADE,
@@ -134,11 +136,12 @@ class ProductCategoryDisabled(models.Model):
     class Meta:
         verbose_name = "비활성화된 셀"
         verbose_name_plural = "비활성화된 셀"
-        unique_together = [['product', 'category']]
+        unique_together = [['country', 'product', 'category']]
         indexes = [
-            models.Index(fields=['product', 'category']),
+            models.Index(fields=['country', 'product', 'category']),
         ]
 
     def __str__(self):
-        return f"{self.product.name} - {self.category.name} (비활성화)"
+        return f"[{self.country.code}] {self.product.name} - {self.category.name} (비활성화)"
+
 

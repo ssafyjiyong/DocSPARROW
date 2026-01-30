@@ -419,3 +419,117 @@ def get_login_logs_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+@login_required
+@user_passes_test(is_superuser)
+def download_logs_view(request):
+    """다운로드 로그 페이지"""
+    return render(request, 'artifacts/download_logs.html')
+
+
+@login_required
+@user_passes_test(is_superuser)
+def get_download_logs_api(request):
+    """다운로드 로그 데이터 조회 API"""
+    from .models import DownloadLog
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    from django.db import models
+    
+    try:
+        # 필터 파라미터
+        download_type = request.GET.get('type', '')  # 'single', 'bulk', or ''
+        username_search = request.GET.get('username', '').strip()
+        product_search = request.GET.get('product', '').strip()
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        page_number = int(request.GET.get('page', 1))
+        
+        # 쿼리 시작
+        query = DownloadLog.objects.select_related(
+            'user', 'artifact', 'product', 'country', 'artifact__category', 'artifact__product'
+        ).all()
+        
+        # 다운로드 유형 필터
+        if download_type:
+            query = query.filter(download_type=download_type)
+        
+        # 사용자명 검색
+        if username_search:
+            query = query.filter(user__username__icontains=username_search)
+        
+        # 제품명 검색
+        if product_search:
+            query = query.filter(
+                models.Q(product__name__icontains=product_search) |
+                models.Q(artifact__product__name__icontains=product_search)
+            )
+        
+        # 날짜 범위 필터
+        if date_from:
+            try:
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                date_from_aware = timezone.make_aware(date_from_obj)
+                query = query.filter(created_at__gte=date_from_aware)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+                date_to_obj = date_to_obj + timedelta(days=1)
+                date_to_aware = timezone.make_aware(date_to_obj)
+                query = query.filter(created_at__lt=date_to_aware)
+            except ValueError:
+                pass
+        
+        # 페이지네이션
+        paginator = Paginator(query, 50)  # 페이지당 50개
+        page_obj = paginator.get_page(page_number)
+        
+        # 데이터 직렬화
+        logs = []
+        for log in page_obj:
+            log_data = {
+                'id': log.id,
+                'username': log.user.username if log.user else 'Anonymous',
+                'user_id': log.user.id if log.user else None,
+                'download_type': log.download_type,
+                'download_type_display': log.get_download_type_display(),
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+                'created_at': timezone.localtime(log.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            
+            if log.download_type == 'single' and log.artifact:
+                log_data['artifact'] = {
+                    'id': log.artifact.id,
+                    'filename': log.artifact.filename,
+                    'product_name': log.artifact.product.name,
+                    'category_name': log.artifact.category.name,
+                    'version': log.artifact.version_string,
+                }
+            elif log.download_type == 'bulk' and log.product:
+                log_data['bulk'] = {
+                    'product_name': log.product.name,
+                    'country_code': log.country.code if log.country else 'N/A',
+                    'artifact_count': log.artifact_count,
+                }
+            
+            logs.append(log_data)
+        
+        return JsonResponse({
+            'success': True,
+            'logs': logs,
+            'pagination': {
+                'current_page': page_obj.number,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'has_previous': page_obj.has_previous(),
+                'has_next': page_obj.has_next(),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+

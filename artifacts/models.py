@@ -175,3 +175,51 @@ class LoginAttempt(models.Model):
         return f"{self.username} - {status} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
 
 
+class DownloadLog(models.Model):
+    """다운로드 로그 (Superuser 전용 조회)"""
+    DOWNLOAD_TYPE_CHOICES = [
+        ('single', '개별 다운로드'),
+        ('bulk', '일괄 다운로드'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                            related_name='download_logs', verbose_name="다운로드한 사용자")
+    download_type = models.CharField(max_length=10, choices=DOWNLOAD_TYPE_CHOICES,
+                                    verbose_name="다운로드 유형")
+    
+    # For single artifact downloads
+    artifact = models.ForeignKey(Artifact, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='download_logs', verbose_name="산출물")
+    
+    # For bulk downloads
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='download_logs', verbose_name="제품")
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='download_logs', verbose_name="국가")
+    artifact_count = models.IntegerField(default=0, verbose_name="다운로드된 산출물 수",
+                                        help_text="일괄 다운로드 시 ZIP에 포함된 파일 수")
+    
+    # Metadata
+    ip_address = models.GenericIPAddressField(verbose_name="IP 주소", null=True, blank=True)
+    user_agent = models.TextField(verbose_name="User Agent", blank=True,
+                                  help_text="브라우저 및 OS 정보")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="다운로드 시간")
+    
+    class Meta:
+        verbose_name = "다운로드 로그"
+        verbose_name_plural = "다운로드 로그"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['download_type', '-created_at']),
+        ]
+    
+    def __str__(self):
+        if self.download_type == 'single' and self.artifact:
+            return f"{self.user.username if self.user else 'Anonymous'} - {self.artifact.filename} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
+        elif self.download_type == 'bulk' and self.product:
+            return f"{self.user.username if self.user else 'Anonymous'} - {self.product.name} 일괄 ({self.artifact_count}개) ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
+        return f"Download Log #{self.id}"
+
+

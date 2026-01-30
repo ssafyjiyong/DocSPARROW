@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache, cache_control
 from django.db.models import Max
 from django.utils import timezone
-from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled, LoginAttempt
+from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled, LoginAttempt, DownloadLog
 import json
 
 
@@ -336,6 +336,15 @@ def artifact_download(request, artifact_id):
     if not artifact.file:
         return JsonResponse({'error': '파일이 존재하지 않습니다.'}, status=404)
     
+    # Log the download
+    DownloadLog.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        download_type='single',
+        artifact=artifact,
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
+    
     response = FileResponse(artifact.file.open('rb'))
     # Support Korean filenames using RFC 5987
     encoded_filename = quote(artifact.filename)
@@ -377,6 +386,9 @@ def product_bulk_download(request, product_id):
     if not artifacts.exists():
         return JsonResponse({'error': '다운로드할 자료가 없습니다.'}, status=404)
     
+    # Count artifacts for logging
+    artifact_count = artifacts.count()
+    
     # Create ZIP file in memory
     zip_buffer = io.BytesIO()
     
@@ -395,6 +407,17 @@ def product_bulk_download(request, product_id):
                 except Exception as e:
                     # Skip files that can't be read
                     continue
+    
+    # Log the bulk download
+    DownloadLog.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        download_type='bulk',
+        product=product,
+        country=country,
+        artifact_count=artifact_count,
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
     
     # Prepare response
     zip_buffer.seek(0)

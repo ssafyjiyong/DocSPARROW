@@ -1,17 +1,17 @@
 {% extends "artifacts/base.html" %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto" x-data="loginLogsManager()">
+<div class="max-w-7xl mx-auto" x-data="downloadLogsManager()">
     <!-- Page Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between gap-4 mb-4">
             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <i class="fas fa-shield-halved text-white text-2xl"></i>
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-download text-white text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl font-bold text-slate-800">로그인 시도 로그</h1>
-                    <p class="text-slate-500">시스템 접속 기록</p>
+                    <h1 class="text-3xl font-bold text-slate-800">다운로드 로그</h1>
+                    <p class="text-slate-500">산출물 다운로드 기록</p>
                 </div>
             </div>
             
@@ -21,10 +21,10 @@
                     <i class="fas fa-arrow-left"></i>
                     관리자 페이지
                 </a>
-                <a href="{% url 'artifacts:download_logs' %}" 
-                   class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2">
-                    <i class="fas fa-download"></i>
-                    다운로드 로그
+                <a href="{% url 'artifacts:login_logs' %}" 
+                   class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                    <i class="fas fa-shield-halved"></i>
+                    로그인 로그
                 </a>
             </div>
         </div>
@@ -32,17 +32,17 @@
 
     <!-- Filters Section -->
     <div class="mb-6 bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <!-- Success Filter -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <!-- Download Type Filter -->
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-2">
-                    <i class="fas fa-filter mr-1"></i> 상태
+                    <i class="fas fa-filter mr-1"></i> 다운로드 유형
                 </label>
-                <select x-model="filters.success" @change="loadLogs()" 
-                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                <select x-model="filters.type" @change="loadLogs()" 
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">전체</option>
-                    <option value="true">성공</option>
-                    <option value="false">실패</option>
+                    <option value="single">개별 다운로드</option>
+                    <option value="bulk">일괄 다운로드</option>
                 </select>
             </div>
 
@@ -53,7 +53,17 @@
                 </label>
                 <input type="text" x-model="filters.username" @input.debounce.500ms="loadLogs()" 
                        placeholder="사용자명 검색"
-                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Product Search -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-box mr-1"></i> 제품명
+                </label>
+                <input type="text" x-model="filters.product" @input.debounce.500ms="loadLogs()" 
+                       placeholder="제품명 검색"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
 
             <!-- Date From -->
@@ -62,7 +72,7 @@
                     <i class="fas fa-calendar mr-1"></i> 시작 날짜
                 </label>
                 <input type="date" x-model="filters.date_from" @change="loadLogs()" 
-                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
 
             <!-- Date To -->
@@ -71,17 +81,17 @@
                     <i class="fas fa-calendar mr-1"></i> 종료 날짜
                 </label>
                 <input type="date" x-model="filters.date_to" @change="loadLogs()" 
-                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
         </div>
     </div>
 
     <!-- Logs Table -->
     <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
-        <div class="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <i class="fas fa-list text-white text-xl"></i>
-                <h2 class="text-xl font-bold text-white">로그인 시도 목록</h2>
+                <h2 class="text-xl font-bold text-white">다운로드 기록</h2>
             </div>
             <div class="text-white text-sm">
                 <span x-text="pagination.total_count"></span> 건
@@ -91,7 +101,7 @@
         <div class="p-6">
             <!-- Loading State -->
             <div x-show="loading" class="text-center py-8">
-                <i class="fas fa-spinner fa-spin text-3xl text-amber-500 mb-2"></i>
+                <i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-2"></i>
                 <p class="text-slate-600">로딩 중...</p>
             </div>
 
@@ -100,29 +110,51 @@
                 <table class="min-w-full divide-y divide-slate-200">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">상태</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">유형</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">사용자명</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">다운로드 내용</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">IP 주소</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">시간</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User-Agent</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">실패 이유</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-slate-200">
                         <template x-for="log in logs" :key="log.id">
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span x-show="log.success" class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 flex items-center gap-1 w-fit">
-                                        <i class="fas fa-check-circle"></i> 성공
+                                    <span x-show="log.download_type === 'single'" class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 flex items-center gap-1 w-fit">
+                                        <i class="fas fa-file"></i> 개별
                                     </span>
-                                    <span x-show="!log.success" class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 flex items-center gap-1 w-fit">
-                                        <i class="fas fa-times-circle"></i> 실패
+                                    <span x-show="log.download_type === 'bulk'" class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 flex items-center gap-1 w-fit">
+                                        <i class="fas fa-file-archive"></i> 일괄
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
                                         <i class="fas fa-user text-slate-400"></i>
                                         <span class="text-sm font-medium text-slate-900" x-text="log.username"></span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <!-- Single Download -->
+                                    <div x-show="log.download_type === 'single' && log.artifact" class="text-sm">
+                                        <div class="font-medium text-slate-900" x-text="log.artifact?.filename"></div>
+                                        <div class="text-slate-500 text-xs">
+                                            <span x-text="log.artifact?.product_name"></span> · 
+                                            <span x-text="log.artifact?.category_name"></span> · 
+                                            v<span x-text="log.artifact?.version"></span>
+                                        </div>
+                                    </div>
+                                    <!-- Bulk Download -->
+                                    <div x-show="log.download_type === 'bulk' && log.bulk" class="text-sm">
+                                        <div class="font-medium text-slate-900">
+                                            <span x-text="log.bulk?.product_name"></span> 
+                                            (<span x-text="log.bulk?.country_code"></span>)
+                                        </div>
+                                        <div class="text-slate-500 text-xs">
+                                            <i class="fas fa-file-archive"></i> 
+                                            <span x-text="log.bulk?.artifact_count"></span>개 파일
+                                        </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -135,11 +167,6 @@
                                     <span class="text-xs text-slate-500 font-mono line-clamp-2" 
                                           x-text="log.user_agent || '-'"
                                           :title="log.user_agent"></span>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="text-sm text-red-600" 
-                                          x-show="!log.success" 
-                                          x-text="log.failure_reason || '-'"></span>
                                 </td>
                             </tr>
                         </template>
@@ -188,13 +215,14 @@
 
 {% block extra_js %}
 <script>
-function loginLogsManager() {
+function downloadLogsManager() {
     return {
         logs: [],
         loading: false,
         filters: {
-            success: '',
+            type: '',
             username: '',
+            product: '',
             date_from: '',
             date_to: ''
         },
@@ -215,14 +243,15 @@ function loginLogsManager() {
             
             const params = new URLSearchParams({
                 page: page,
-                success: this.filters.success,
+                type: this.filters.type,
                 username: this.filters.username,
+                product: this.filters.product,
                 date_from: this.filters.date_from,
                 date_to: this.filters.date_to
             });
             
             try {
-                const response = await fetch(`/manage/api/login-logs/?${params}`);
+                const response = await fetch(`/manage/api/download-logs/?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {

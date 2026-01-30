@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache, cache_control
 from django.db.models import Max
 from django.utils import timezone
-from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled, LoginAttempt, DownloadLog
+from .models import Country, Product, ProductVersion, Category, Artifact, ProductCategoryDisabled, LoginAttempt, ArtifactActivityLog, DownloadLog
 import json
 
 
@@ -316,6 +316,26 @@ def artifact_upload(request, product_id, category_id):
         uploader=request.user
     )
     
+    # Log upload activity
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    
+    ArtifactActivityLog.objects.create(
+        artifact=artifact,
+        user=request.user,
+        username=request.user.username,
+        action='upload',
+        ip_address=ip_address,
+        user_agent=user_agent,
+        details={
+            'country': country.code if country else None,
+            'product': product.name,
+            'category': category.name,
+            'version': version_string,
+            'filename': artifact.filename
+        }
+    )
+    
     return JsonResponse({
         'success': True,
         'message': '파일이 업로드되었습니다.',
@@ -440,7 +460,35 @@ def artifact_delete(request, artifact_id):
     if not (request.user.is_staff or artifact.uploader == request.user):
         return HttpResponseForbidden('권한이 없습니다.')
     
+    # Save artifact info before deletion for logging
+    artifact_snapshot = {
+        'id': artifact.id,
+        'filename': artifact.filename,
+        'country': artifact.country.code if artifact.country else None,
+        'product': artifact.product.name,
+        'category': artifact.category.name,
+        'version': artifact.version_string,
+        'uploader': artifact.uploader.username if artifact.uploader else None
+    }
+    
+    # Get IP and User-Agent
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    
+    # Delete the artifact
     artifact.delete()
+    
+    # Log deletion activity (artifact is now None)
+    ArtifactActivityLog.objects.create(
+        artifact=None,  # File is deleted
+        artifact_snapshot=artifact_snapshot,
+        user=request.user,
+        username=request.user.username,
+        action='delete',
+        ip_address=ip_address,
+        user_agent=user_agent,
+        details={'deleted_by_role': 'admin' if request.user.is_staff else 'uploader'}
+    )
     
     return JsonResponse({
         'success': True,

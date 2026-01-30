@@ -176,30 +176,31 @@ class LoginAttempt(models.Model):
 
 
 class DownloadLog(models.Model):
-    """다운로드 로그 (Superuser 전용 조회)"""
+    """다운로드 로그"""
     DOWNLOAD_TYPE_CHOICES = [
         ('single', '개별 다운로드'),
         ('bulk', '일괄 다운로드'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                            related_name='download_logs', verbose_name="다운로드한 사용자")
+                            related_name='downloads', verbose_name="사용자")
+    username = models.CharField(max_length=150, verbose_name="사용자명",
+                                help_text="다운로드한 사용자명")
     download_type = models.CharField(max_length=10, choices=DOWNLOAD_TYPE_CHOICES,
-                                    verbose_name="다운로드 유형")
+                                     verbose_name="다운로드 유형")
     
-    # For single artifact downloads
+    # For single downloads
     artifact = models.ForeignKey(Artifact, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='download_logs', verbose_name="산출물")
     
     # For bulk downloads
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True,
-                               related_name='download_logs', verbose_name="제품")
+                               related_name='bulk_downloads', verbose_name="제품")
     country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True,
-                               related_name='download_logs', verbose_name="국가")
-    artifact_count = models.IntegerField(default=0, verbose_name="다운로드된 산출물 수",
-                                        help_text="일괄 다운로드 시 ZIP에 포함된 파일 수")
+                               related_name='bulk_downloads', verbose_name="국가")
+    artifact_count = models.IntegerField(default=0, verbose_name="다운로드된 파일 수",
+                                        help_text="일괄 다운로드 시 포함된 파일 개수")
     
-    # Metadata
     ip_address = models.GenericIPAddressField(verbose_name="IP 주소", null=True, blank=True)
     user_agent = models.TextField(verbose_name="User Agent", blank=True,
                                   help_text="브라우저 및 OS 정보")
@@ -211,15 +212,63 @@ class DownloadLog(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
-            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['username', '-created_at']),
             models.Index(fields=['download_type', '-created_at']),
         ]
     
     def __str__(self):
-        if self.download_type == 'single' and self.artifact:
-            return f"{self.user.username if self.user else 'Anonymous'} - {self.artifact.filename} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
-        elif self.download_type == 'bulk' and self.product:
-            return f"{self.user.username if self.user else 'Anonymous'} - {self.product.name} 일괄 ({self.artifact_count}개) ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
-        return f"Download Log #{self.id}"
+        if self.download_type == 'single':
+            return f"{self.username} - {self.artifact.filename if self.artifact else 'Unknown'} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
+        else:
+            return f"{self.username} - {self.product.name if self.product else 'Unknown'} 일괄 ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
 
 
+class ArtifactActivityLog(models.Model):
+    """파일 활동 로그 (업로드/삭제)"""
+    ACTION_CHOICES = [
+        ('upload', '업로드'),
+        ('delete', '삭제'),
+    ]
+    
+    artifact = models.ForeignKey(Artifact, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='activity_logs', verbose_name="산출물",
+                                help_text="삭제된 경우 NULL")
+    
+    # Snapshot of artifact info (for deleted files)
+    artifact_snapshot = models.JSONField(verbose_name="파일 정보 스냅샷", null=True, blank=True,
+                                        help_text="삭제 시 파일 정보 보존 (JSON)")
+    
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                            related_name='artifact_activities', verbose_name="사용자")
+    username = models.CharField(max_length=150, verbose_name="사용자명")
+    
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES, verbose_name="활동 유형")
+    
+    ip_address = models.GenericIPAddressField(verbose_name="IP 주소", null=True, blank=True)
+    user_agent = models.TextField(verbose_name="User Agent", blank=True,
+                                  help_text="브라우저 및 OS 정보")
+    
+    details = models.JSONField(verbose_name="추가 정보", null=True, blank=True,
+                              help_text="추가 메타데이터 (JSON)")
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="활동 시간")
+    
+    class Meta:
+        verbose_name = "파일 활동 로그"
+        verbose_name_plural = "파일 활동 로그"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['username', '-created_at']),
+            models.Index(fields=['action', '-created_at']),
+        ]
+    
+    def __str__(self):
+        action_display = self.get_action_display()
+        if self.artifact:
+            filename = self.artifact.filename
+        elif self.artifact_snapshot:
+            filename = self.artifact_snapshot.get('filename', 'Unknown')
+        else:
+            filename = 'Unknown'
+        return f"{self.username} - {action_display}: {filename} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"

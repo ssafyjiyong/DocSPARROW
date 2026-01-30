@@ -30,6 +30,10 @@ urlpatterns = [
     path('manage/login-logs/', manage_views.login_logs_view, name='login_logs'),
     path('manage/api/login-logs/', manage_views.get_login_logs_api, name='get_login_logs_api'),
     
+    # Unified Activity Logs URLs (Superuser only)
+    path('manage/unified-logs/', manage_views.unified_logs_view, name='unified_logs'),
+    path('manage/api/unified-logs/', manage_views.get_unified_logs_api, name='get_unified_logs_api'),
+    
     # Download Logs URLs (Superuser only)
     path('manage/download-logs/', manage_views.download_logs_view, name='download_logs'),
     path('manage/api/download-logs/', manage_views.get_download_logs_api, name='get_download_logs_api'),

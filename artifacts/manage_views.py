@@ -533,3 +533,180 @@ def get_download_logs_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+@login_required
+@user_passes_test(is_superuser)
+def unified_logs_view(request):
+    """통합 활동 로그 페이지"""
+    return render(request, 'artifacts/unified_logs.html')
+
+
+@login_required
+@user_passes_test(is_superuser)
+def get_unified_logs_api(request):
+    """통합 활동 로그 데이터 조회 API"""
+    from .models import LoginAttempt, DownloadLog, ArtifactActivityLog
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    from itertools import chain
+    from operator import attrgetter
+    
+    try:
+        # Filter parameters
+        activity_type = request.GET.get('type', '')  # 'login', 'download', 'upload', 'delete', or ''
+        username_search = request.GET.get('username', '').strip()
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        page_number = int(request.GET.get('page', 1))
+        
+        # Collect logs based on activity type filter
+        all_logs = []
+        
+        if not activity_type or activity_type == 'login':
+            login_logs = LoginAttempt.objects.all()
+            if username_search:
+                login_logs = login_logs.filter(username__icontains=username_search)
+            if date_from:
+                try:
+                    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                    date_from_aware = timezone.make_aware(date_from_obj)
+                    login_logs = login_logs.filter(created_at__gte=date_from_aware)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                    date_to_aware = timezone.make_aware(date_to_obj)
+                    login_logs = login_logs.filter(created_at__lt=date_to_aware)
+                except ValueError:
+                    pass
+            all_logs.extend(login_logs)
+        
+        if not activity_type or activity_type == 'download':
+            download_logs = DownloadLog.objects.select_related('user', 'artifact', 'product', 'country').all()
+            if username_search:
+                download_logs = download_logs.filter(username__icontains=username_search)
+            if date_from:
+                try:
+                    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                    date_from_aware = timezone.make_aware(date_from_obj)
+                    download_logs = download_logs.filter(created_at__gte=date_from_aware)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                    date_to_aware = timezone.make_aware(date_to_obj)
+                    download_logs = download_logs.filter(created_at__lt=date_to_aware)
+                except ValueError:
+                    pass
+            all_logs.extend(download_logs)
+        
+        if not activity_type or activity_type in ['upload', 'delete']:
+            artifact_logs = ArtifactActivityLog.objects.select_related('user', 'artifact').all()
+            if activity_type in ['upload', 'delete']:
+                artifact_logs = artifact_logs.filter(action=activity_type)
+            if username_search:
+                artifact_logs = artifact_logs.filter(username__icontains=username_search)
+            if date_from:
+                try:
+                    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                    date_from_aware = timezone.make_aware(date_from_obj)
+                    artifact_logs = artifact_logs.filter(created_at__gte=date_from_aware)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                    date_to_aware = timezone.make_aware(date_to_obj)
+                    artifact_logs = artifact_logs.filter(created_at__lt=date_to_aware)
+                except ValueError:
+                    pass
+            all_logs.extend(artifact_logs)
+        
+        # Sort by created_at (descending)
+        all_logs_sorted = sorted(all_logs, key=attrgetter('created_at'), reverse=True)
+        
+        # Pagination
+        paginator = Paginator(all_logs_sorted, 50)
+        page_obj = paginator.get_page(page_number)
+        
+        # Serialize logs
+        logs = []
+        for log in page_obj:
+            log_data = {
+                'created_at': timezone.localtime(log.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+                'ip_address': getattr(log, 'ip_address', None),
+                'user_agent': getattr(log, 'user_agent', ''),
+            }
+            
+            if isinstance(log, LoginAttempt):
+                log_data.update({
+                    'id': f'login-{log.id}',
+                    'type': 'login',
+                    'username': log.username,
+                    'success': log.success,
+                    'failure_reason': log.failure_reason if not log.success else None,
+                })
+            elif isinstance(log, DownloadLog):
+                log_data.update({
+                    'id': f'download-{log.id}',
+                    'type': 'download',
+                    'username': log.username,
+                    'download_type': log.download_type,
+                })
+                if log.download_type == 'single' and log.artifact:
+                    log_data['artifact'] = {
+                        'filename': log.artifact.filename,
+                        'product': log.artifact.product.name,
+                        'category': log.artifact.category.name,
+                        'version': log.artifact.version_string,
+                    }
+                elif log.download_type == 'bulk' and log.product:
+                    log_data['bulk'] = {
+                        'product': log.product.name,
+                        'country': log.country.code if log.country else 'Global',
+                        'artifact_count': log.artifact_count,
+                    }
+            elif isinstance(log, ArtifactActivityLog):
+                log_data.update({
+                    'id': f'artifact-{log.id}',  
+                    'type': f'artifact_{log.action}',  # 'artifact_upload' or 'artifact_delete'
+                    'username': log.username,
+                    'action': log.action,
+                    'action_display': log.get_action_display(),
+                })
+                if log.artifact:
+                    log_data['artifact'] = {
+                        'filename': log.artifact.filename,
+                        'product': log.artifact.product.name,
+                        'category': log.artifact.category.name,
+                        'version': log.artifact.version_string,
+                    }
+                elif log.artifact_snapshot:
+                    log_data['artifact'] = {
+                        'filename': log.artifact_snapshot.get('filename', 'Unknown'),
+                        'product': log.artifact_snapshot.get('product', 'Unknown'),
+                        'category': log.artifact_snapshot.get('category', 'Unknown'),
+                        'version': log.artifact_snapshot.get('version', 'Unknown'),
+                        'deleted': True,
+                    }
+            
+            logs.append(log_data)
+        
+        return JsonResponse({
+            'success': True,
+            'logs': logs,
+            'pagination': {
+                'current_page': page_obj.number,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'has_previous': page_obj.has_previous(),
+                'has_next': page_obj.has_next(),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+

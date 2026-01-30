@@ -259,8 +259,9 @@ def artifact_upload(request, product_id, category_id):
     else:
         country = Country.objects.filter(code='KR').first()
     
-    # Check if this cell is disabled
+    # Check if this cell is disabled for this specific country
     is_disabled = ProductCategoryDisabled.objects.filter(
+        country=country,
         product=product,
         category=category
     ).exists()
@@ -276,6 +277,7 @@ def artifact_upload(request, product_id, category_id):
     
     # Validate filename format: 제품명_카테고리명_버전명.확장자
     # US의 경우: EN_제품명_카테고리명_버전명.확장자
+    # Note: 파일명에서 공백은 언더스코어(_)로 대체 가능
     filename = file.name
     filename_without_ext = filename.rsplit('.', 1)[0] if '.' in filename else filename
     
@@ -287,10 +289,15 @@ def artifact_upload(request, product_id, category_id):
         # Default (KR) format: ProductName_CategoryName_vX.Y.Z
         expected_prefix = f"{product.name}_{category.name}_v{version_string}"
     
-    if not filename_without_ext == expected_prefix:
+    # Normalize both filenames: replace spaces with underscores for comparison
+    # This allows users to use either spaces or underscores in filenames
+    normalized_expected = expected_prefix.replace(' ', '_')
+    normalized_actual = filename_without_ext.replace(' ', '_')
+    
+    if normalized_actual != normalized_expected:
         return JsonResponse({
             'error': f'파일명 양식이 올바르지 않습니다.\n\n'
-                    f'올바른 형식: {expected_prefix}.확장자\n'
+                    f'올바른 형식: {expected_prefix.replace(" ", "_")}.확장자\n'
                     f'현재 파일명: {filename}'
         }, status=400)
     

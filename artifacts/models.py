@@ -1,6 +1,25 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.db import models
+import os
+from datetime import datetime
+
+
+def artifact_upload_path(instance, filename):
+    """
+    커스텀 파일 업로드 경로 생성 함수
+    원본 파일명을 보존하면서 타임스탬프 기반 디렉토리로 충돌 방지
+    
+    경로 형식: artifacts/%Y/%m/%d/%H%M%S_%f/{original_filename}
+    예: artifacts/2026/01/30/152745_123456/Ent-SAST_제품 기능비교표_v2512.2.xlsx
+    """
+    now = datetime.now()
+    # 초 단위 + 마이크로초를 사용하여 고유한 디렉토리 생성
+    timestamp_dir = now.strftime('%Y/%m/%d/%H%M%S_%f')
+    
+    # 원본 파일명을 그대로 사용
+    return os.path.join('artifacts', timestamp_dir, filename)
+
 
 
 class Country(models.Model):
@@ -95,7 +114,7 @@ class Artifact(models.Model):
                                related_name='artifacts', verbose_name="제품")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, 
                                 related_name='artifacts', verbose_name="카테고리")
-    file = models.FileField(upload_to='artifacts/%Y/%m/', verbose_name="파일")
+    file = models.FileField(upload_to=artifact_upload_path, verbose_name="파일")
     version_string = models.CharField(max_length=50, verbose_name="산출물 버전", 
                                      help_text="예: 5.18.0")
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 

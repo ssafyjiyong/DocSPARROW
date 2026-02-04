@@ -343,6 +343,24 @@ def artifact_upload(request, product_id, category_id):
         }
     )
     
+    # Trigger webhook for file upload
+    try:
+        from .webhook_utils import trigger_webhooks
+        trigger_webhooks('file_upload', {
+            'filename': artifact.filename,
+            'uploader': request.user.username,
+            'product': product.name,
+            'category': category.name,
+            'version': version_string,
+            'country': country.code if country else 'Global',
+            'ip_address': ip_address
+        })
+    except Exception as e:
+        # Webhook failure should not affect upload
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"웹훅 트리거 실패: {str(e)}")
+    
     return JsonResponse({
         'success': True,
         'message': '파일이 업로드되었습니다.',
@@ -364,13 +382,31 @@ def artifact_download(request, artifact_id):
         return JsonResponse({'error': '파일이 존재하지 않습니다.'}, status=404)
     
     # Log the download
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    
     DownloadLog.objects.create(
         user=request.user if request.user.is_authenticated else None,
+        username=request.user.username if request.user.is_authenticated else 'Anonymous',
         download_type='single',
         artifact=artifact,
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request)
+        ip_address=ip_address,
+        user_agent=user_agent
     )
+    
+    # Trigger webhook for download
+    try:
+        from .webhook_utils import trigger_webhooks
+        trigger_webhooks('download_single', {
+            'filename': artifact.filename,
+            'downloader': request.user.username if request.user.is_authenticated else 'Anonymous',
+            'product': artifact.product.name,
+            'category': artifact.category.name,
+            'version': artifact.version_string,
+            'ip_address': ip_address
+        })
+    except Exception:
+        pass  # Don't let webhook failure affect download
     
     response = FileResponse(artifact.file.open('rb'))
     # Support Korean filenames using RFC 5987
@@ -436,15 +472,32 @@ def product_bulk_download(request, product_id):
                     continue
     
     # Log the bulk download
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    
     DownloadLog.objects.create(
         user=request.user if request.user.is_authenticated else None,
+        username=request.user.username if request.user.is_authenticated else 'Anonymous',
         download_type='bulk',
         product=product,
         country=country,
         artifact_count=artifact_count,
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request)
+        ip_address=ip_address,
+        user_agent=user_agent
     )
+    
+    # Trigger webhook for bulk download
+    try:
+        from .webhook_utils import trigger_webhooks
+        trigger_webhooks('download_bulk', {
+            'product': product.name,
+            'downloader': request.user.username if request.user.is_authenticated else 'Anonymous',
+            'country': country.code if country else 'Global',
+            'file_count': artifact_count,
+            'ip_address': ip_address
+        })
+    except Exception:
+        pass  # Don't let webhook failure affect download
     
     # Prepare response
     zip_buffer.seek(0)
@@ -496,6 +549,21 @@ def artifact_delete(request, artifact_id):
         user_agent=user_agent,
         details={'deleted_by_role': 'admin' if request.user.is_staff else 'uploader'}
     )
+    
+    # Trigger webhook for file delete
+    try:
+        from .webhook_utils import trigger_webhooks
+        trigger_webhooks('file_delete', {
+            'filename': artifact_snapshot['filename'],
+            'deleter': request.user.username,
+            'product': artifact_snapshot['product'],
+            'category': artifact_snapshot['category'],
+            'version': artifact_snapshot['version'],
+            'country': artifact_snapshot['country'] or 'Global',
+            'ip_address': ip_address
+        })
+    except Exception:
+        pass  # Don't let webhook failure affect deletion
     
     return JsonResponse({
         'success': True,

@@ -37,4 +37,12 @@ urlpatterns = [
     # Download Logs URLs (Superuser only)
     path('manage/download-logs/', manage_views.download_logs_view, name='download_logs'),
     path('manage/api/download-logs/', manage_views.get_download_logs_api, name='get_download_logs_api'),
+    
+    # Webhook Management URLs (Staff only)
+    path('manage/webhooks/', manage_views.webhook_management, name='webhook_management'),
+    path('manage/api/webhooks/', manage_views.webhook_list_api, name='webhook_list_api'),
+    path('manage/webhook/create/', manage_views.webhook_create, name='webhook_create'),
+    path('manage/webhook/<int:webhook_id>/update/', manage_views.webhook_update, name='webhook_update'),
+    path('manage/webhook/<int:webhook_id>/delete/', manage_views.webhook_delete, name='webhook_delete'),
+    path('manage/webhook/<int:webhook_id>/test/', manage_views.webhook_test, name='webhook_test'),
 ]

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from .models import Category, Product, ProductCategoryDisabled
+from .views import get_client_ip
 import json
 
 
@@ -74,6 +75,18 @@ def category_create(request):
             display_order=int(display_order)
         )
         
+        # Trigger webhook for admin activity
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '카테고리 생성',
+                'admin': request.user.username,
+                'details': f'카테고리 "{name}"을(를) 생성했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
+        
         return JsonResponse({
             'success': True,
             'message': '카테고리가 생성되었습니다.',
@@ -108,6 +121,18 @@ def category_update(request, category_id):
         category.display_order = int(display_order)
         category.save()
         
+        # Trigger webhook
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '카테고리 수정',
+                'admin': request.user.username,
+                'details': f'카테고리 "{name}"을(를) 수정했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
+        
         return JsonResponse({
             'success': True,
             'message': '카테고리가 수정되었습니다.',
@@ -138,6 +163,18 @@ def category_delete(request, category_id):
         
         category_name = category.name
         category.delete()
+        
+        # Trigger webhook
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '카테고리 삭제',
+                'admin': request.user.username,
+                'details': f'카테고리 "{category_name}"을(를) 삭제했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
         
         return JsonResponse({
             'success': True,
@@ -172,6 +209,18 @@ def product_create(request):
             color_class=color_class,
             display_order=int(display_order)
         )
+        
+        # Trigger webhook
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '제품 생성',
+                'admin': request.user.username,
+                'details': f'제품 "{name}"을(를) 생성했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
         
         return JsonResponse({
             'success': True,
@@ -213,6 +262,18 @@ def product_update(request, product_id):
         product.display_order = int(display_order)
         product.save()
         
+        # Trigger webhook
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '제품 수정',
+                'admin': request.user.username,
+                'details': f'제품 "{name}"을(를) 수정했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
+        
         return JsonResponse({
             'success': True,
             'message': '제품이 수정되었습니다.',
@@ -244,6 +305,18 @@ def product_delete(request, product_id):
         
         product_name = product.name
         product.delete()
+        
+        # Trigger webhook
+        try:
+            from .webhook_utils import trigger_webhooks
+            trigger_webhooks('admin_activity', {
+                'activity': '제품 삭제',
+                'admin': request.user.username,
+                'details': f'제품 "{product_name}"을(를) 삭제했습니다.',
+                'ip_address': get_client_ip(request)
+            })
+        except Exception:
+            pass
         
         return JsonResponse({
             'success': True,
@@ -307,6 +380,19 @@ def toggle_disabled_cell(request):
         if disabled:
             # Enable (remove from disabled list)
             disabled.delete()
+            
+            # Trigger webhook
+            try:
+                from .webhook_utils import trigger_webhooks
+                trigger_webhooks('admin_activity', {
+                    'activity': '셀 활성화',
+                    'admin': request.user.username,
+                    'details': f'[{country.code}] {product.name} - {category.name} 셀을 활성화했습니다.',
+                    'ip_address': get_client_ip(request)
+                })
+            except Exception:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'disabled': False,
@@ -320,6 +406,19 @@ def toggle_disabled_cell(request):
                 category=category,
                 created_by=request.user
             )
+            
+            # Trigger webhook
+            try:
+                from .webhook_utils import trigger_webhooks
+                trigger_webhooks('admin_activity', {
+                    'activity': '셀 비활성화',
+                    'admin': request.user.username,
+                    'details': f'[{country.code}] {product.name} - {category.name} 셀을 비활성화했습니다.',
+                    'ip_address': get_client_ip(request)
+                })
+            except Exception:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'disabled': True,
@@ -709,4 +808,220 @@ def get_unified_logs_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+
+# ============================================================================
+# Webhook Management Views (Staff Only)
+# ============================================================================
+
+@login_required
+@user_passes_test(is_staff_user)
+def webhook_management(request):
+    """웹훅 관리 페이지"""
+    return render(request, 'artifacts/webhook_management.html')
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def webhook_list_api(request):
+    """웹훅 리스트 조회 API"""
+    from .models import Webhook
+    
+    try:
+        webhooks = Webhook.objects.all()
+        
+        webhook_data = [{
+            'id': webhook.id,
+            'name': webhook.name,
+            'webhook_url': webhook.webhook_url,
+            'masked_url': webhook.masked_url,
+            'is_active': webhook.is_active,
+            'event_file_upload': webhook.event_file_upload,
+            'event_file_delete': webhook.event_file_delete,
+            'event_download_single': webhook.event_download_single,
+            'event_download_bulk': webhook.event_download_bulk,
+            'event_admin_activity': webhook.event_admin_activity,
+            'enabled_events': webhook.enabled_events,
+            'created_at': webhook.created_at.strftime('%Y-%m-%d %H:%M'),
+        } for webhook in webhooks]
+        
+        return JsonResponse({
+            'success': True,
+            'webhooks': webhook_data,
+            'count': webhooks.count()
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(["POST"])
+def webhook_create(request):
+    """웹훅 생성"""
+    from .models import Webhook
+    
+    try:
+        # Check webhook limit (max 5)
+        if Webhook.objects.count() >= 5:
+            return JsonResponse({
+                'success': False,
+                'error': '최대 5개의 웹훅까지만 등록할 수 있습니다.'
+            }, status=400)
+        
+        name = request.POST.get('name', '').strip()
+        webhook_url = request.POST.get('webhook_url', '').strip()
+        is_active = request.POST.get('is_active') == 'true'
+        
+        # Event filters
+        event_file_upload = request.POST.get('event_file_upload') == 'true'
+        event_file_delete = request.POST.get('event_file_delete') == 'true'
+        event_download_single = request.POST.get('event_download_single') == 'true'
+        event_download_bulk = request.POST.get('event_download_bulk') == 'true'
+        event_admin_activity = request.POST.get('event_admin_activity') == 'true'
+        
+        if not name or not webhook_url:
+            return JsonResponse({
+                'success': False,
+                'error': '웹훅 이름과 URL을 입력해주세요.'
+            }, status=400)
+        
+        # Validate Discord webhook URL
+        if not webhook_url.startswith('https://discord.com/api/webhooks/'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Discord 웹훅 URL 형식이 올바르지 않습니다.'
+            }, status=400)
+        
+        webhook = Webhook.objects.create(
+            name=name,
+            webhook_url=webhook_url,
+            is_active=is_active,
+            event_file_upload=event_file_upload,
+            event_file_delete=event_file_delete,
+            event_download_single=event_download_single,
+            event_download_bulk=event_download_bulk,
+            event_admin_activity=event_admin_activity,
+            created_by=request.user
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': '웹훅이 생성되었습니다.',
+            'webhook': {
+                'id': webhook.id,
+                'name': webhook.name,
+                'masked_url': webhook.masked_url
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(["POST"])
+def webhook_update(request, webhook_id):
+    """웹훅 수정"""
+    from .models import Webhook
+    
+    try:
+        webhook = get_object_or_404(Webhook, id=webhook_id)
+        
+        name = request.POST.get('name', '').strip()
+        webhook_url = request.POST.get('webhook_url', '').strip()
+        is_active = request.POST.get('is_active') == 'true'
+        
+        # Event filters
+        event_file_upload = request.POST.get('event_file_upload') == 'true'
+        event_file_delete = request.POST.get('event_file_delete') == 'true'
+        event_download_single = request.POST.get('event_download_single') == 'true'
+        event_download_bulk = request.POST.get('event_download_bulk') == 'true'
+        event_admin_activity = request.POST.get('event_admin_activity') == 'true'
+        
+        if not name or not webhook_url:
+            return JsonResponse({
+                'success': False,
+                'error': '웹훅 이름과 URL을 입력해주세요.'
+            }, status=400)
+        
+        # Validate Discord webhook URL
+        if not webhook_url.startswith('https://discord.com/api/webhooks/'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Discord 웹훅 URL 형식이 올바르지 않습니다.'
+            }, status=400)
+        
+        webhook.name = name
+        webhook.webhook_url = webhook_url
+        webhook.is_active = is_active
+        webhook.event_file_upload = event_file_upload
+        webhook.event_file_delete = event_file_delete
+        webhook.event_download_single = event_download_single
+        webhook.event_download_bulk = event_download_bulk
+        webhook.event_admin_activity = event_admin_activity
+        webhook.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '웹훅이 수정되었습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(["POST"])
+def webhook_delete(request, webhook_id):
+    """웹훅 삭제"""
+    from .models import Webhook
+    
+    try:
+        webhook = get_object_or_404(Webhook, id=webhook_id)
+        webhook_name = webhook.name
+        webhook.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'"{webhook_name}" 웹훅이 삭제되었습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(["POST"])
+def webhook_test(request, webhook_id):
+    """웹훅 테스트 전송"""
+    from .models import Webhook
+    from .webhook_utils import send_discord_webhook, create_embed_message
+    
+    try:
+        webhook = get_object_or_404(Webhook, id=webhook_id)
+        
+        # Create test embed message
+        test_embed = create_embed_message('admin_activity', {
+            'activity': '웹훅 테스트',
+            'admin': request.user.username,
+            'details': f'"{webhook.name}" 웹훅이 정상적으로 작동합니다!',
+            'ip_address': get_client_ip(request)
+        })
+        
+        # Send webhook
+        success = send_discord_webhook(webhook.webhook_url, test_embed)
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': '테스트 메시지가 전송되었습니다. Discord를 확인해주세요.'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': '웹훅 전송에 실패했습니다. URL을 확인해주세요.'
+            }, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

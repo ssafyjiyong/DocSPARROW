@@ -291,3 +291,66 @@ class ArtifactActivityLog(models.Model):
         else:
             filename = 'Unknown'
         return f"{self.username} - {action_display}: {filename} ({self.created_at.strftime('%Y-%m-%d %H:%M:%S')})"
+
+
+class Webhook(models.Model):
+    """Discord 웹훅 모델 (Staff 전용)"""
+    name = models.CharField(max_length=100, verbose_name="웹훅 이름",
+                           help_text="웹훅을 식별하기 위한 이름")
+    webhook_url = models.URLField(verbose_name="웹훅 URL",
+                                  help_text="Discord 웹훅 URL")
+    is_active = models.BooleanField(default=True, verbose_name="활성화",
+                                    help_text="웹훅 활성화 여부")
+    
+    # Event type filters
+    event_file_upload = models.BooleanField(default=True, verbose_name="파일 업로드 알림")
+    event_file_delete = models.BooleanField(default=True, verbose_name="파일 삭제 알림")
+    event_download_single = models.BooleanField(default=False, verbose_name="개별 다운로드 알림",
+                                                help_text="개별 파일 다운로드 알림 (많을 수 있음)")
+    event_download_bulk = models.BooleanField(default=True, verbose_name="일괄 다운로드 알림")
+    event_admin_activity = models.BooleanField(default=True, verbose_name="관리자 활동 알림",
+                                               help_text="카테고리/제품 관리, 셀 토글 등")
+    
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   related_name='webhooks_created', verbose_name="생성자")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
+    
+    class Meta:
+        verbose_name = "웹훅"
+        verbose_name_plural = "웹훅"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active', '-created_at']),
+        ]
+    
+    def __str__(self):
+        status = "활성화" if self.is_active else "비활성화"
+        return f"{self.name} ({status})"
+    
+    @property
+    def masked_url(self):
+        """웹훅 URL의 앞부분만 표시 (보안)"""
+        if not self.webhook_url:
+            return ""
+        # https://discord.com/api/webhooks/... 형식
+        parts = self.webhook_url.split('/')
+        if len(parts) >= 6:
+            return f"{'/'.join(parts[:6])}/..."
+        return self.webhook_url[:30] + "..."
+    
+    @property
+    def enabled_events(self):
+        """활성화된 이벤트 목록"""
+        events = []
+        if self.event_file_upload:
+            events.append("파일 업로드")
+        if self.event_file_delete:
+            events.append("파일 삭제")
+        if self.event_download_single:
+            events.append("개별 다운로드")
+        if self.event_download_bulk:
+            events.append("일괄 다운로드")
+        if self.event_admin_activity:
+            events.append("관리자 활동")
+        return events

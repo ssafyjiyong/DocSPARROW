@@ -429,14 +429,14 @@ def toggle_disabled_cell(request):
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def login_logs_view(request):
     """로그인 로그 페이지"""
     return render(request, 'artifacts/login_logs.html')
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def get_login_logs_api(request):
     """로그인 로그 데이터 조회 API"""
     from .models import LoginAttempt
@@ -520,14 +520,14 @@ def get_login_logs_api(request):
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def download_logs_view(request):
     """다운로드 로그 페이지"""
     return render(request, 'artifacts/download_logs.html')
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def get_download_logs_api(request):
     """다운로드 로그 데이터 조회 API"""
     from .models import DownloadLog
@@ -634,14 +634,14 @@ def get_download_logs_api(request):
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def unified_logs_view(request):
     """통합 활동 로그 페이지"""
     return render(request, 'artifacts/unified_logs.html')
 
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_staff_user)
 def get_unified_logs_api(request):
     """통합 활동 로그 데이터 조회 API"""
     from .models import LoginAttempt, DownloadLog, ArtifactActivityLog

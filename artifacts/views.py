@@ -41,13 +41,19 @@ def user_login(request):
         if user is not None:
             login(request, user)
             
+            # 인증 방식 확인 (LDAP vs 로컬)
+            auth_backend = getattr(user, 'backend', 'unknown')
+            is_ldap = 'LDAPBackend' in auth_backend
+            auth_method = 'LDAP/AD' if is_ldap else '로컬'
+            
             # 로그인 성공 기록
             LoginAttempt.objects.create(
                 username=username,
                 user=user,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                success=True
+                success=True,
+                failure_reason=f'인증방식: {auth_method}'
             )
             
             # 로그인 성공 시 항상 대시보드로 리다이렉트

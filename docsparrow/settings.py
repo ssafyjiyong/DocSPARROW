@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -189,3 +191,59 @@ X_FRAME_OPTIONS = 'DENY'  # Prevent clickjacking
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
 
+# ==============================================================================
+# LDAP / ACTIVE DIRECTORY AUTHENTICATION
+# ==============================================================================
+# Fasoo AD 서버 연동 설정 (ldap3 기반 커스텀 백엔드)
+#
+# 환경변수로 오버라이드 가능 (선택):
+#   LDAP_SERVER_URI       - AD 서버 주소 (기본값: ldap://192.168.200.5:389)
+#   LDAP_USER_SEARCH_BASE - 사용자 검색 Base DN (기본값: OU=FASOOCOM,DC=fasoo,DC=com)
+#   LDAP_ENABLED          - false로 설정 시 LDAP 비활성화
+# ==============================================================================
+
+# 환경변수로 LDAP 비활성화 가능 (LDAP_ENABLED=false 설정 시)
+LDAP_ENABLED = os.environ.get('LDAP_ENABLED', 'true').lower() != 'false'
+
+if LDAP_ENABLED:
+    # --- AD 서버 접속 정보 ---
+    LDAP_SERVER_URI = os.environ.get(
+        'LDAP_SERVER_URI', 'ldap://192.168.200.5:389'
+    )
+
+    # --- Direct Bind 방식 (서비스 계정 불필요) ---
+    # 사용자가 입력한 username에 @fasoo.com을 붙여 AD에 직접 바인드
+    LDAP_USER_DN_TEMPLATE = '%(user)s@fasoo.com'
+
+    # --- 사용자 검색 Base DN ---
+    LDAP_USER_SEARCH_BASE = os.environ.get(
+        'LDAP_USER_SEARCH_BASE', 'OU=FASOOCOM,DC=fasoo,DC=com'
+    )
+
+    # --- AD 속성 → Django User 필드 매핑 ---
+    LDAP_USER_ATTR_MAP = {
+        "first_name": "cn",                  # AD 이름(cn) → Django first_name
+        "last_name": "sn",                   # AD 성(sn) → Django last_name
+        "email": "userPrincipalName",        # AD UPN → Django email
+    }
+
+    # LDAP 인증 성공 시 매번 AD 정보로 User 업데이트 (동적 사용자 생성)
+    LDAP_ALWAYS_UPDATE_USER = True
+
+    # --- 인증 백엔드 순서: LDAP 먼저, 실패 시 로컬 DB Fallback ---
+    AUTHENTICATION_BACKENDS = [
+        "artifacts.ldap_backend.LDAPBackend",          # 1순위: AD/LDAP 인증
+        "django.contrib.auth.backends.ModelBackend",   # 2순위: 로컬 DB 인증 (Fallback)
+    ]
+
+    # --- LDAP 디버그 로깅 (개발 환경에서만 사용) ---
+    import logging
+    _ldap_logger = logging.getLogger('ldap_auth')
+    _ldap_logger.addHandler(logging.StreamHandler())
+    _ldap_logger.setLevel(logging.DEBUG if DEBUG else logging.WARNING)
+
+else:
+    # LDAP 비활성화 시 기본 인증 백엔드만 사용
+    AUTHENTICATION_BACKENDS = [
+        "django.contrib.auth.backends.ModelBackend",
+    ]
